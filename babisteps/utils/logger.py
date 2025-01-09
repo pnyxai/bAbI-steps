@@ -1,6 +1,7 @@
 import logging
-import structlog
 import sys
+
+import structlog
 
 loggers = {}
 
@@ -34,7 +35,7 @@ def configure_structlog():
 def get_logger(name, level=logging.INFO):
     """
     Create and configure a logger with specified name.
-    
+
     :param level:
     :param name: The name of the logger.
     :return: The configured logger instance.
@@ -54,7 +55,7 @@ def get_logger(name, level=logging.INFO):
 
 
 def override_level(level):
-    for logger_name in loggers.keys():
+    for logger_name in loggers:
         logger = loggers[logger_name]
         logger.setLevel(level)
         loggers[logger_name] = structlog.wrap_logger(logger)

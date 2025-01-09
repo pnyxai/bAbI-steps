@@ -1,0 +1,6 @@
+# formatting (addapted from vLLM)
+yapf==0.43.0
+toml==0.10.2
+tomli==2.2.1
+ruff==0.9.1
+isort==5.13.2

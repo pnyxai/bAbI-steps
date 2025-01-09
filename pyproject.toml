@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "bAbI-steps"
+name = "babisteps"
 version = "0.1.0"
 description = ""
 authors = ["Nicolas Aguirre <nicolasaguirre90@hotmail.com>"]
@@ -7,11 +7,52 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-outlines = {extras = ["transformers", "vllm"], version = "^0.1.10"}
 pydantic = "^2.10.4"
 ipykernel = "^6.29.5"
 structlog = "^24.4.0"
 
+
+[tool.poetry.group.dev.dependencies]
+yapf = "0.43.0"
+toml = "0.10.2"
+tomli = "2.2.1"
+ruff = "0.9.1"
+isort = "5.13.2"
+
+[tool.ruff]
+# Allow lines to be as long as 80.
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    # "I",
+    "G",
+]
+ignore = [
+    # star imports
+    "F405", "F403",
+    # lambda expression assignment
+    "E731",
+    # Loop control variable not used within loop body
+    "B007",
+    # f-string format
+    "UP032",
+]
+
+[tool.isort]
+use_parentheses = true
+skip_gitignore = true
 
 [build-system]
 requires = ["poetry-core"]
