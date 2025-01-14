@@ -2,6 +2,7 @@ import logging
 import sys
 
 import structlog
+from collections import OrderedDict
 
 loggers = {}
 
@@ -11,6 +12,20 @@ def configure_structlog():
     Configure the structlog logger with a set of processors and options.
     :return: None
     """
+
+    def reorder_keys(_, __, event_dict):
+        """
+        Reorder keys to ensure 'logger', 'level', and 'event' come first.
+        """
+        key_order = ["logger", "level", "event"]
+        # Create an ordered dictionary with specified key order
+        reordered = OrderedDict(
+            (key, event_dict.pop(key)) for key in key_order if key in event_dict
+        )
+        # Append the remaining keys
+        reordered.update(event_dict)
+        return reordered
+
     processors = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
@@ -19,6 +34,7 @@ def configure_structlog():
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
+        reorder_keys,  # Custom processor to reorder keys        
         structlog.processors.JSONRenderer(),  # Outputs events as JSON strings.
     ]
 

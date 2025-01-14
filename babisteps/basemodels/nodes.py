@@ -102,3 +102,10 @@ class EntityInLocationState(State):
             if unit.entity == entity:
                 return unit.coordenate
         return None
+
+    def get_entities_in_coodenate(self, coordenate: Coordenate):
+        entities = []
+        for unit in self.attr:
+            if unit.coordenate == coordenate:
+                entities.append(unit.entity)
+        return entities
