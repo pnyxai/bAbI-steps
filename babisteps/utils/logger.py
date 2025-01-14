@@ -1,8 +1,8 @@
 import logging
 import sys
+from collections import OrderedDict
 
 import structlog
-from collections import OrderedDict
 
 loggers = {}
 
@@ -19,9 +19,8 @@ def configure_structlog():
         """
         key_order = ["logger", "level", "event"]
         # Create an ordered dictionary with specified key order
-        reordered = OrderedDict(
-            (key, event_dict.pop(key)) for key in key_order if key in event_dict
-        )
+        reordered = OrderedDict((key, event_dict.pop(key)) for key in key_order
+                                if key in event_dict)
         # Append the remaining keys
         reordered.update(event_dict)
         return reordered

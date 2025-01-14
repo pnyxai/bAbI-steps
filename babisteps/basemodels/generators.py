@@ -5,13 +5,9 @@ from typing import Annotated, Any, Callable, Literal, Optional, Union
 from pydantic import BaseModel, Field, model_validator
 
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, To
-from babisteps.basemodels.nodes import (
-    Coordenate,
-    Entity,
-    EntityInLocationState,
-    State,
-    UnitState,
-)
+from babisteps.basemodels.nodes import (Coordenate, Entity,
+                                        EntityInLocationState, State,
+                                        UnitState)
 from babisteps.utils import logger
 
 
@@ -83,7 +79,8 @@ class Generator(BaseModel):
         new_state = state.create_state_from_delta(j, delta)
         return new_state
 
-    def initialize_state(self, i: int, condition: Callable) -> EntityInLocationState:
+    def initialize_state(self, i: int,
+                         condition: Callable) -> EntityInLocationState:
         """
         Initializes the state for an entity in a location based on a given condition.
         Args:
@@ -139,9 +136,9 @@ class Generator(BaseModel):
         self.deltas = deltas
 
     def create_fol(self):
+
         def enumerate_model(
-            element: Union[list[Entity], list[Coordenate]],
-        ) -> list[list]:
+            element: Union[list[Entity], list[Coordenate]], ) -> list[list]:
             enumeration = []
             for e in element:
                 if e != self.uncertainty:
@@ -154,8 +151,7 @@ class Generator(BaseModel):
                 if unit.coordenate != self.uncertainty:
                     # state_sentences.append(["In", unit.entity.name, unit.coordenate])
                     state_sentences.append(
-                        In(entity=unit.entity, coordenate=unit.coordenate)
-                    )
+                        In(entity=unit.entity, coordenate=unit.coordenate))
             return state_sentences
 
         def describre_transitions(state: State) -> list[list]:
@@ -168,25 +164,20 @@ class Generator(BaseModel):
 
                 if prev_coord == self.uncertainty:
                     transition_sentences.append(
-                        To(entity=entity, coordenate=next_coord)
-                    )
+                        To(entity=entity, coordenate=next_coord))
                 elif next_coord == self.uncertainty:
                     transition_sentences.append(
-                        From(entity=entity, coordenate=prev_coord)
-                    )
+                        From(entity=entity, coordenate=prev_coord))
                 else:
                     transition_sentences.append(
-                        random.choice(
-                            [
-                                To(entity=entity, coordenate=next_coord),
-                                FromTo(
-                                    entity=entity,
-                                    coordenate1=prev_coord,
-                                    coordenate2=next_coord,
-                                ),
-                            ]
-                        )
-                    )
+                        random.choice([
+                            To(entity=entity, coordenate=next_coord),
+                            FromTo(
+                                entity=entity,
+                                coordenate1=prev_coord,
+                                coordenate2=next_coord,
+                            ),
+                        ]))
             return transition_sentences
 
         sentences = []
@@ -270,25 +261,26 @@ class EntitiesInCoordenatesPolar(Generator):
         if self.answer == 1:
             i = self.states_qty - 1
             condition = lambda x: (e, c) in x
-            states[i] = self.initialize_state(i, condition)  # NewEntityInLocationState
+            states[i] = self.initialize_state(
+                i, condition)  # NewEntityInLocationState
             for j in list(reversed(range(i))):
                 any_condition = lambda pair: True
                 all_condition = lambda pair: True
-                states[j] = self.create_new_state(
-                    j, states[j + 1], any_condition, all_condition
-                )
+                states[j] = self.create_new_state(j, states[j + 1],
+                                                  any_condition, all_condition)
 
         # Answer 0: a is not in l
         if self.answer == 0:
             i = self.states_qty - 1
-            condition = lambda x: (e, c) not in x and (e, self.uncertainty) not in x
-            states[i] = self.initialize_state(i, condition)  # NewEntityInLocationState
+            condition = lambda x: (e, c) not in x and (e, self.uncertainty
+                                                       ) not in x
+            states[i] = self.initialize_state(
+                i, condition)  # NewEntityInLocationState
             for j in list(reversed(range(i))):
                 any_condition = lambda pair: True
                 all_condition = lambda pair: True
-                states[j] = self.create_new_state(
-                    j, states[j + 1], any_condition, all_condition
-                )
+                states[j] = self.create_new_state(j, states[j + 1],
+                                                  any_condition, all_condition)
 
         if self.answer == 2:
             if random.choice([0, 1]):
@@ -301,9 +293,9 @@ class EntitiesInCoordenatesPolar(Generator):
                         lambda pair: pair[0] != e
                     )  # all entities should be different from a, due it will be always
                     # in self.uncertainty
-                    states[j] = self.create_new_state(
-                        j, states[j - 1], any_condition, all_condition
-                    )
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      any_condition,
+                                                      all_condition)
             else:
                 i = random.randint(0, self.states_qty - 1)
                 condition = lambda x: (e, c) in x
@@ -311,9 +303,9 @@ class EntitiesInCoordenatesPolar(Generator):
                 for j in list(reversed(range(i))):
                     any_condition = lambda pair: True
                     all_condition = lambda pair: True
-                    states[j] = self.create_new_state(
-                        j, states[j + 1], any_condition, all_condition
-                    )
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      any_condition,
+                                                      all_condition)
 
                 # create the states after i
                 for j in range(i + 1, len(states)):
@@ -327,9 +319,9 @@ class EntitiesInCoordenatesPolar(Generator):
                         # Now there should be any ocurrence of entity
                         any_condition = lambda pair: True
                         all_condition = lambda pair: pair[0] != e
-                    states[j] = self.create_new_state(
-                        j, states[j - 1], any_condition, all_condition
-                    )
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      any_condition,
+                                                      all_condition)
 
         self.states = states
         self.create_deltas()
@@ -346,40 +338,35 @@ class EntitiesInCoordenatesWho(Generator):
         e = self.model.entities[0]
         c = self.model.coordenates[0]
         self.model.coordenates.append(self.uncertainty)
-        self.logger.info(
-            "Creating EntitiesInCoordenatesWho", answer=self.answer, e=e.name, c=c.name
-        )
+        self.logger.info("Creating EntitiesInCoordenatesWho",
+                         answer=self.answer,
+                         e=e.name,
+                         c=c.name)
         states = [None] * self.states_qty
 
         if self.answer == 1:
             i = self.states_qty - 1
             condition = lambda x: (e, c) in x and all(
-                (entity, c) not in x for entity in self.model.entities[1:]
-            )
-            states[i] = self.initialize_state(i, condition)  # NewEntityInLocationState
+                (entity, c) not in x for entity in self.model.entities[1:])
+            states[i] = self.initialize_state(
+                i, condition)  # NewEntityInLocationState
             for j in list(reversed(range(i))):
                 any_condition = lambda pair: True
                 all_condition = lambda pair: True
-                states[j] = self.create_new_state(
-                    j, states[j + 1], any_condition, all_condition
-                )
+                states[j] = self.create_new_state(j, states[j + 1],
+                                                  any_condition, all_condition)
 
         elif self.answer == 0:
             i = self.states_qty - 1
 
-            condition = (
-                lambda x: all((entity, c) not in x for entity in self.model.entities)
-                and len(
-                    [
-                        (entity, self.uncertainty)
-                        for entity in self.model.entities
-                        if (entity, self.uncertainty) in x
-                    ]
-                )
-                < self.states_qty
-            )
+            condition = (lambda x: all(
+                (entity, c) not in x for entity in self.model.entities
+            ) and len([(entity, self.uncertainty)
+                       for entity in self.model.entities
+                       if (entity, self.uncertainty) in x]) < self.states_qty)
 
-            states[i] = self.initialize_state(i, condition)  # NewEntityInLocationState
+            states[i] = self.initialize_state(
+                i, condition)  # NewEntityInLocationState
 
             EIU = states[i].get_entities_in_coodenate(self.uncertainty)
 
@@ -406,27 +393,24 @@ class EntitiesInCoordenatesWho(Generator):
                             all_condition = lambda pair: True
 
                         states[j] = self.create_new_state(
-                            j, states[j + 1], any_condition, all_condition
-                        )
+                            j, states[j + 1], any_condition, all_condition)
             else:
                 self.logger.debug("There were not entities in uncertainty")
                 for j in list(reversed(range(i))):
                     any_condition = lambda pair: True
                     all_condition = lambda pair: True
-                    states[j] = self.create_new_state(
-                        j, states[j + 1], any_condition, all_condition
-                    )
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      any_condition,
+                                                      all_condition)
 
         elif self.answer == 2:
             i = self.states_qty - 1
             # empty_l = all(A, lambda x : x \not \in l)
             empty_l = lambda x: all(
-                (entity, c) not in x for entity in self.model.entities
-            )
+                (entity, c) not in x for entity in self.model.entities)
             # some_in_UN = any(A, lambda x : x \in NW)
-            some_in_UN = lambda x: any(
-                (entity, self.uncertainty) in x for entity in self.model.entities
-            )
+            some_in_UN = lambda x: any((entity, self.uncertainty) in x
+                                       for entity in self.model.entities)
             condition = lambda x: empty_l(x) and some_in_UN(x)
             states[i] = self.initialize_state(i, condition)
             # ANW = list(choose({s.actorsInNowhere(A)}))
@@ -441,9 +425,8 @@ class EntitiesInCoordenatesWho(Generator):
                 else:
                     any_condition = lambda pair, ue=ue: pair[0] == ue
                     all_condition = lambda pair: True
-                states[j] = self.create_new_state(
-                    j, states[j + 1], any_condition, all_condition
-                )
+                states[j] = self.create_new_state(j, states[j + 1],
+                                                  any_condition, all_condition)
         else:
             raise ValueError("Invalid answer value")
 
