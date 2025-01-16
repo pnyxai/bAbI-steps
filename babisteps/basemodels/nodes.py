@@ -74,6 +74,10 @@ class EntityInLocationState(State):
             aux_attr = {(entity, coord)
                         for entity, coord in zip(rnd_entities, rnd_coordenates)
                         }
+            # validate that the elements in aux_attr are not in original_set
+            if aux_attr.issubset(original_set):
+                continue
+
             # create deltas
             for u in aux_attr:
                 e, c = u[0], u[1]
