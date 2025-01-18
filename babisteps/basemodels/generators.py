@@ -2,12 +2,13 @@ import logging
 import random
 from typing import Any, Callable, Literal, Optional, Union
 
+import numpy as np
 from pydantic import BaseModel, Field, model_validator
+from sparse._dok import DOK
 
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, To
 from babisteps.basemodels.nodes import (Coordenate, Entity,
-                                        EntityInLocationState, State,
-                                        UnitState)
+                                        EntityInCoordenateState, State)
 from babisteps.utils import logger
 
 # -------------------------
@@ -102,7 +103,7 @@ class ActorWithObjectWho(TopicRequest):
         if self.answer == "designated_actor":
             return self.coordenate.name
         elif self.answer == "none":
-            return "None"
+            return "Nobody"
         else:
             raise ValueError(
                 "Invalid answer value, should be 'designated_actor' or 'unknown'"
@@ -117,14 +118,16 @@ class ActorWithObjectWho(TopicRequest):
 class EntitiesInCoordenates(BaseModel):
     entities: list[Entity]
     coordenates: list[Coordenate]
-    entities_type: str
-    coordenates_type: str
 
     @model_validator(mode="after")
     def _shuffle(self):
         random.shuffle(self.entities)
         random.shuffle(self.coordenates)
         return self
+
+    @property
+    def as_tuple(self):
+        return (self.entities, self.coordenates)
 
 
 class SimpleTracker(BaseModel):
@@ -138,11 +141,28 @@ class SimpleTracker(BaseModel):
     deltas: Optional[Any] = None
     fol: list[FOL] = None
     nl: list[str] = None
+    num_transitions: int = 1
+    idx2e: Optional[dict] = None
+    e2idx: Optional[dict] = None
+    idx2c: Optional[dict] = None
+    c2idx: Optional[dict] = None
+    shape: Optional[tuple[int, int]] = None
+    shape_str: Literal[("Location", "Actor"), ("Actor", "Object")]
 
     @model_validator(mode="after")
     def fill_logger(self):
         if not self.logger:
-            self.logger = logger.get_logger("Generator", level=self.verbosity)
+            self.logger = logger.get_logger("SimpleTracker",
+                                            level=self.verbosity)
+        return self
+
+    @model_validator(mode="after")
+    def check_shape_and_model(self):
+        model_tuple = self.model.as_tuple
+        if len(model_tuple) != len(self.shape_str):
+            raise ValueError(
+                f"Length mismatch: 'model.as_tuple()' has length {len(model_tuple)} "
+                f"but 'shape_str' has length {len(self.shape_str)}.")
         return self
 
     def load_ontology_from_topic(self) -> Callable:
@@ -156,12 +176,12 @@ class SimpleTracker(BaseModel):
             ActorWithObjectWho: self._actor_with_object_who,
         }
         uncertainty_mapping: dict[type[TopicRequest], Coordenate] = {
-            ActorInLocationPolar: Coordenate(name="nowhere", type="Location"),
-            ActorInLocationWho: Coordenate(name="nowhere", type="Location"),
-            ActorInLocationWhere: Coordenate(name="nowhere", type="Location"),
+            ActorInLocationPolar: Coordenate(name="nowhere"),
+            ActorInLocationWho: Coordenate(name="nowhere"),
+            ActorInLocationWhere: Coordenate(name="nowhere"),
             ActorWithObjectPolar: None,
             ActorWithObjectWhat: None,
-            ActorWithObjectWho: Coordenate(name="nobody", type="Actor"),
+            ActorWithObjectWho: Coordenate(name="nobody"),
         }
 
         # Get the type of the answer
@@ -194,9 +214,11 @@ class SimpleTracker(BaseModel):
 
         e = self.model.entities[0]
         c = self.model.coordenates[0]
+
         self.topic.entity = e
         self.topic.coordenate = c
         self.model.coordenates.append(self.uncertainty)
+        self._create_aux()
         self.logger.info(
             "Creating _actor_in_location_polar",
             answer=self.topic.answer,
@@ -204,73 +226,62 @@ class SimpleTracker(BaseModel):
             c=c.name,
         )
         states = [None] * self.states_qty
-        # Answer 1: a is in l
+
         if self.topic.answer == "yes":
             i = self.states_qty - 1
-            condition = lambda x: (e, c) in x
-            states[i] = self.initialize_state(
-                i, condition)  # NewEntityInLocationState
+            condition = lambda x: x[0, 0] == 1
+            states[i] = self.initialize_state(i, condition)
             for j in list(reversed(range(i))):
-                any_condition = lambda pair: True
-                all_condition = lambda pair: True
-                states[j] = self.create_new_state(j, states[j + 1],
-                                                  any_condition, all_condition)
+                condition = lambda pair: True
+                states[j] = self.create_new_state(j, states[j + 1], condition)
 
-        # Answer 0: a is not in l
         elif self.topic.answer == "no":
-            i = self.states_qty - 1
-            condition = lambda x: (e, c) not in x and (e, self.uncertainty
-                                                       ) not in x
-            states[i] = self.initialize_state(
-                i, condition)  # NewEntityInLocationState
-            for j in list(reversed(range(i))):
-                any_condition = lambda pair: True
-                all_condition = lambda pair: True
-                states[j] = self.create_new_state(j, states[j + 1],
-                                                  any_condition, all_condition)
+            if random.choice([0, 1]):
+                # case for entity in coord different from c
+                i = self.states_qty - 1
+                condition = lambda x: x[0, 0] == 0 and x[-1, 0] == 0
+                states[i] = self.initialize_state(i, condition)
+                for j in list(reversed(range(i))):
+                    condition = lambda pair: True
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition)
+            else:
+                # case where e is in uncertinty, but previously was in c.
+                i = random.randint(0, self.states_qty - 1)
+                condition = lambda x: x[0, 0] == 1
+                states[i] = self.initialize_state(i, condition)
+                for j in list(reversed(range(i))):
+                    condition = lambda pair: True
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition)
+                # create the states after i
+                for j in range(i + 1, len(states)):
+                    condition = lambda x: x[-1, 0] == 1
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      condition)
 
         elif self.topic.answer == "unknown":
             if random.choice([0, 1]):
                 i = 0
-                condition = lambda x: (e, self.uncertainty) in x
+                condition = lambda x: x[-1, 0] == 1
                 states[i] = self.initialize_state(i, condition)
                 for j in range(1, self.states_qty):
-                    any_condition = lambda pair: True
-                    all_condition = (
-                        lambda pair: pair[0] != e
-                    )  # all entities should be different from a, due it will be always
-                    # in self.uncertainty
+                    condition = lambda x: x[-1, 0] == 1
                     states[j] = self.create_new_state(j, states[j - 1],
-                                                      any_condition,
-                                                      all_condition)
+                                                      condition)
             else:
                 i = random.randint(0, self.states_qty - 1)
-                # a \not \in uncertintie && e \not in c
-                condition = lambda x: (e, self.uncertainty) not in x and (
-                    e, c) not in x
+                condition = lambda x: x[0, 0] == 0 and x[-1, 0] == 0
                 states[i] = self.initialize_state(i, condition)
                 for j in list(reversed(range(i))):
-                    any_condition = lambda pair: True
-                    all_condition = lambda pair: True
+                    condition = lambda pair: True
                     states[j] = self.create_new_state(j, states[j + 1],
-                                                      any_condition,
-                                                      all_condition)
-
+                                                      condition)
                 # create the states after i
                 for j in range(i + 1, len(states)):
-                    if j == i + 1:  # Here we place the entity in the self.uncertainty.
-                        any_condition = lambda pair: pair == (
-                            e,
-                            self.uncertainty,
-                        )
-                        all_condition = lambda pair: True
-                    else:
-                        # Now there should be any ocurrence of entity
-                        any_condition = lambda pair: True
-                        all_condition = lambda pair: pair[0] != e
+                    condition = lambda x: x[-1, 0] == 1
                     states[j] = self.create_new_state(j, states[j - 1],
-                                                      any_condition,
-                                                      all_condition)
+                                                      condition)
         else:
             raise ValueError(
                 "Invalid answer value, should be 'yes', 'no' or 'unknown'")
@@ -290,6 +301,7 @@ class SimpleTracker(BaseModel):
         self.topic.entity = e
         self.topic.coordenate = c
         self.model.coordenates.append(self.uncertainty)
+        self._create_aux()
         self.logger.info(
             "Creating _actor_in_location_who",
             answer=self.topic.answer,
@@ -300,92 +312,75 @@ class SimpleTracker(BaseModel):
 
         if self.topic.answer == "designated_entity":
             i = self.states_qty - 1
-            condition = lambda x: (e, c) in x and all(
-                (entity, c) not in x for entity in self.model.entities[1:])
-            states[i] = self.initialize_state(
-                i, condition)  # NewEntityInLocationState
+            condition = lambda x: x[0, 0] == 1 and sum(x[0, 1:]) == 0
+            states[i] = self.initialize_state(i, condition)
             for j in list(reversed(range(i))):
-                any_condition = lambda pair: True
-                all_condition = lambda pair: True
-                states[j] = self.create_new_state(j, states[j + 1],
-                                                  any_condition, all_condition)
+                condition = lambda pair: True
+                states[j] = self.create_new_state(j, states[j + 1], condition)
 
         elif self.topic.answer == "none":
             self.logger.debug(
                 "Creating _actor_in_location_who with answer none")
             i = self.states_qty - 1
+            condition = lambda x: sum(x[0, :]) == 0 and sum(x[-1, :]
+                                                            ) < self.states_qty
+            states[i] = self.initialize_state(i, condition)
 
-            condition = (lambda x: all(
-                (entity, c) not in x for entity in self.model.entities
-            ) and len([(entity, self.uncertainty)
-                       for entity in self.model.entities
-                       if (entity, self.uncertainty) in x]) < self.states_qty)
-
-            states[i] = self.initialize_state(
-                i, condition)  # NewEntityInLocationState
-
-            EIU = states[i].get_entities_in_coodenate(self.uncertainty)
+            EIU = states[i].get_entities_in_coodenate(
+                self.c2idx[self.uncertainty])
 
             if EIU:
                 self.logger.debug(
                     "Entities in uncertainty",
-                    EIU=[entity.name for entity in EIU],
+                    EIU=EIU,
                 )
                 while EIU:
-                    EIU = states[i].get_entities_in_coodenate(self.uncertainty)
+                    EIU = states[i].get_entities_in_coodenate(
+                        self.c2idx[self.uncertainty])
                     for j in list(reversed(range(i))):
                         ue = random.choice(self.model.entities)
-                        if ue in EIU:
+                        x_ue = self.e2idx[ue]
+                        if x_ue in EIU:
                             self.logger.debug(
-                                "Placing entity from NW to coordenate c",
-                                entity=ue.name,
-                                coordenate=c.name,
+                                "Trying to place entity from NW to coordenate c",
+                                entity=x_ue,
+                                coordenate=self.c2idx[c],
+                                left=len(EIU) - 1,
                             )
-                            any_condition = lambda pair, ue=ue: pair == (ue, c)
-                            all_condition = lambda pair: True
-                            EIU.remove(ue)
+                            condition = lambda x, x_ue=x_ue: x[0, x_ue] == 1
+                            EIU.remove(x_ue)
                         else:
-                            any_condition = lambda pair, ue=ue: pair[0] == ue
-                            all_condition = lambda pair: True
-
+                            condition = lambda x, EIU=EIU: all(x[
+                                -1, EIU].todense() == [1] * len(EIU))
                         states[j] = self.create_new_state(
-                            j, states[j + 1], any_condition, all_condition)
+                            j, states[j + 1], condition)
             else:
                 self.logger.debug("There were not entities in uncertainty")
                 for j in list(reversed(range(i))):
-                    any_condition = lambda pair: True
-                    all_condition = lambda pair: True
+                    condition = lambda x: True
                     states[j] = self.create_new_state(j, states[j + 1],
-                                                      any_condition,
-                                                      all_condition)
+                                                      condition)
 
         elif self.topic.answer == "unknown":
             i = self.states_qty - 1
-            # empty_l = all(A, lambda x : x \not \in l)
-            empty_l = lambda x: all(
-                (entity, c) not in x for entity in self.model.entities)
-            # some_in_UN = any(A, lambda x : x \in NW)
-            some_in_UN = lambda x: any((entity, self.uncertainty) in x
-                                       for entity in self.model.entities)
+            empty_l = lambda x: sum(x[0, :]) == 0
+            some_in_UN = lambda x: sum(x[-1, :]) > 0
+
             condition = lambda x: empty_l(x) and some_in_UN(x)
             states[i] = self.initialize_state(i, condition)
-            # ANW = list(choose({s.actorsInNowhere(A)}))
-            EIU = states[i].get_entities_in_coodenate(self.uncertainty)
+            EIU = states[i].get_entities_in_coodenate(
+                self.c2idx[self.uncertainty])
             for j in list(reversed(range(i))):
                 ue = random.choice(self.model.entities)
-                if ue in EIU:
-                    any_condition = lambda pair: True
-                    all_condition = lambda pair, ue=ue: pair != (
-                        ue, c) and pair != (
-                            ue,
-                            self.uncertainty,
-                        )
-                    EIU.remove(ue)
+                x_ue = self.e2idx[ue]
+                if x_ue in EIU:
+                    condition = (lambda x, x_ue=x_ue: x[0, x_ue] == 0 and x[
+                        -1, x_ue] == 0)
+                    EIU.remove(x_ue)
                 else:
-                    any_condition = lambda pair, ue=ue: pair[0] == ue
-                    all_condition = lambda pair: True
-                states[j] = self.create_new_state(j, states[j + 1],
-                                                  any_condition, all_condition)
+                    condition = lambda x: all(x[-1, EIU].todense() == [1] *
+                                              len(EIU))
+                states[j] = self.create_new_state(j, states[j + 1], condition)
         else:
             raise ValueError("Invalid answer value")
         self.logger.info(
@@ -398,11 +393,11 @@ class SimpleTracker(BaseModel):
 
     def _actor_in_location_where(self):
         e = self.model.entities[0]
-        # this time, entitie can be nowhere as DESIGNATED_LOCATION)
         c = self.model.coordenates[0]
-        self.model.coordenates.append(self.uncertainty)
         self.topic.entity = e
         self.topic.coordenate = c
+        self.model.coordenates.append(self.uncertainty)
+        self._create_aux()
         self.logger.info(
             "Creating _actor_in_location_where",
             answer=self.topic.answer,
@@ -413,20 +408,17 @@ class SimpleTracker(BaseModel):
 
         i = self.states_qty - 1
         if self.topic.answer == "designated_location":
-            condition = lambda x: (e, c) in x
+            condition = lambda x: x[0, 0] == 1
         elif self.topic.answer == "unknown":
-            condition = lambda x: (e, self.uncertainty) in x
+            condition = lambda x: x[-1, 0] == 1
         else:
             raise ValueError(
                 "Invalid answer value, should be 'designated_location' or 'unknown'"
             )
-
         states[i] = self.initialize_state(i, condition)
         for j in list(reversed(range(i))):
-            any_condition = lambda pair: True
-            all_condition = lambda pair: True
-            states[j] = self.create_new_state(j, states[j + 1], any_condition,
-                                              all_condition)
+            condition = lambda pair: True
+            states[j] = self.create_new_state(j, states[j + 1], condition)
 
         self.logger.info(
             "_actor_in_location_where successfully created:",
@@ -441,7 +433,10 @@ class SimpleTracker(BaseModel):
         c = self.model.coordenates[0]
         self.topic.entity = e
         self.topic.coordenate = c
+        self.model.coordenates.append(self.uncertainty)
+        self._create_aux()
         states = [None] * self.states_qty
+
         self.logger.info(
             "Creating _actor_with_object_polar",
             answer=self.topic.answer,
@@ -451,20 +446,17 @@ class SimpleTracker(BaseModel):
 
         i = self.states_qty - 1
         if self.topic.answer == "yes":
-            condition = lambda x: (e, c) in x
+            condition = lambda x: x[0, 0] == 1
         elif self.topic.answer == "no":
-            condition = lambda x: (e, c) not in x and (e, self.uncertainty
-                                                       ) not in x
+            condition = lambda x: x[0, 0] == 0 and x[-1, 0] == 0
         else:
             raise ValueError(
                 "Invalid answer value, should be 1 (YES) or 0 (NO)")
 
         states[i] = self.initialize_state(i, condition)
         for j in list(reversed(range(i))):
-            any_condition = lambda pair: True
-            all_condition = lambda pair: True
-            states[j] = self.create_new_state(j, states[j + 1], any_condition,
-                                              all_condition)
+            condition = lambda pair: True
+            states[j] = self.create_new_state(j, states[j + 1], condition)
 
         self.logger.info(
             "_actor_with_object_polar successfully created",
@@ -480,30 +472,23 @@ class SimpleTracker(BaseModel):
         c = self.model.coordenates[0]
         self.topic.entity = e
         self.topic.coordenate = c
+        self._create_aux()
         states = [None] * self.states_qty
-        i = self.states_qty - 1
 
-        # case answer == DESIGNATED_OBJECT:
+        i = self.states_qty - 1
         if self.topic.answer == "designated_object":
-            # only_o_in_a = o \in a && all(O[1:], lambda x : x \not \in a)
-            condition = lambda x: (e, c) in x and all(
-                (entity, c) not in x for entity in self.model.entities[1:])
-        # case answer == NO_OBJECT:
+            condition = lambda x: x[0, 0] == 1 and sum(x[0, 1:]) == 0
         elif self.topic.answer == "none":
-            # empty_a = all(O, lambda x : x \not \in a)
-            condition = lambda x: all(
-                (entity, c) not in x for entity in self.model.entities)
+            condition = lambda x: sum(x[0, :]) == 0
         else:
             raise ValueError(
-                "Invalid answer value, should be 1 (DESIGNATED_OBJECT) or 0 (NO_OBJECT)"
+                "Invalid answer value, should be 'designated_object' or 'none'"
             )
 
         states[i] = self.initialize_state(i, condition)
         for j in list(reversed(range(i))):
-            any_condition = lambda pair: True
-            all_condition = lambda pair: True
-            states[j] = self.create_new_state(j, states[j + 1], any_condition,
-                                              all_condition)
+            condition = lambda pair: True
+            states[j] = self.create_new_state(j, states[j + 1], condition)
 
         self.logger.info(
             "_actor_with_object_what successfully created",
@@ -516,29 +501,25 @@ class SimpleTracker(BaseModel):
     def _actor_with_object_who(self):
         e = self.model.entities[0]
         c = self.model.coordenates[0]
+        self.model.coordenates.append(self.uncertainty)
         self.topic.entity = e
         self.topic.coordenate = c
+        self._create_aux()
         states = [None] * self.states_qty
-        i = self.states_qty - 1
-        # Define condition based on the answer
 
+        i = self.states_qty - 1
         if self.topic.answer == "designated_actor":
-            condition = lambda x: (e, c) in x and all(
-                (entity, c) not in x for entity in self.model.entities[1:])
+            condition = lambda x: x[0, 0] == 1 and sum(x[1:, 0]) == 0
         elif self.topic.answer == "none":
-            # entity o \in NB
-            condition = lambda x: (e, self.uncertainty) in x
+            condition = lambda x: x[-1, 0] == 1
         else:
             raise ValueError(
-                "Invalid answer value, should be 1 (DESIGNATED_ACTOR) or 0 (NONE)"
-            )
+                "Invalid answer value, should be 'designated_actor' or 'none'")
 
         states[i] = self.initialize_state(i, condition)
         for j in list(reversed(range(i))):
-            any_condition = lambda pair: True
-            all_condition = lambda pair: True
-            states[j] = self.create_new_state(j, states[j + 1], any_condition,
-                                              all_condition)
+            condition = lambda pair: True
+            states[j] = self.create_new_state(j, states[j + 1], condition)
 
         self.logger.info(
             "_actor_with_object_who successfully created",
@@ -549,48 +530,47 @@ class SimpleTracker(BaseModel):
 
         return states
 
+    def _create_aux(self):
+        self.shape = (len(self.model.coordenates), len(self.model.entities))
+        self.idx2e = {i: e for i, e in enumerate(self.model.entities)}
+        self.e2idx = {e: i for i, e in enumerate(self.model.entities)}
+        self.idx2c = {i: c for i, c in enumerate(self.model.coordenates)}
+        self.c2idx = {c: i for i, c in enumerate(self.model.coordenates)}
+        return
+
     def create_ontology(self):
         f_ontology = self.load_ontology_from_topic()
         self.states = f_ontology()
-        self.create_deltas()
+        self.create_transitions()
 
     def create_new_state(
         self,
         j: int,
-        state: UnitState,
-        any_condition: Callable,
-        all_condition: Callable,
-    ) -> EntityInLocationState:
+        state: EntityInCoordenateState,
+        condition: Callable,
+    ) -> EntityInCoordenateState:
         """
         Create a new state for an entity in a location based on the current state and
         the given conditions.
         Args:
             j (int): An identifier for the state.
-            state (UnitState): The current state of the entity in the location.
-            any_condition (Callable): A callable that represents a condition to meet for
-            any transition.
-            all_condition (Callable): A callable that represents a condition to meet
-            for all transitions.
+            state (EntityInCoordenateState): The current state of derive a new one.
+            condition (Callable): A callable that represents a condition to meet by
+            the transition.
         Returns:
-            EntityInLocationState: The new state of the entity in the location after
+            EntityInCoordenateState: The new state of the entity in the location after
             applying the transitions.
         """
-        # num_transitions = random.randint(self.min_transitions,
-        #                                 self.max_transitions)
-        #
-        num_transitions = 1
-        delta = state.create_delta(
-            num_transitions,
-            self.model.coordenates,
-            any_condition,
-            all_condition,
+
+        new_am, _ = state.create_transition(
+            self.num_transitions,
+            condition,
         )
-        self.logger.debug("Delta", i=j, delta=delta)
-        new_state = state.create_state_from_delta(j, delta)
+        new_state = EntityInCoordenateState(am=new_am, index=j)
         return new_state
 
     def initialize_state(self, i: int,
-                         condition: Callable) -> EntityInLocationState:
+                         condition: Callable) -> EntityInCoordenateState:
         """
         Initializes the state for an entity in a location based on a given condition.
         Args:
@@ -599,13 +579,13 @@ class SimpleTracker(BaseModel):
             boolean indicating
                                   whether the condition is met.
         Returns:
-            EntityInLocationState: The initialized state that meets the given condition.
+            EntityInCoordenateState: A initialized state that meets the given condition.
         """
 
         self.logger.info("Creating Answer:", i=i)
         s = self.create_random_state(i)
         t = 0
-        while not condition(s.attr_as_set):
+        while not condition(s.am):
             self.logger.debug("Condition not met", i=i, state=s)
             s = self.create_random_state(i)
             t += 1
@@ -616,56 +596,82 @@ class SimpleTracker(BaseModel):
                           i=i)
         return s
 
-    def create_random_state(self, i: int) -> EntityInLocationState:
+    def create_random_state(self, i: int) -> EntityInCoordenateState:
         """
         Creates a random state for entities in coordenates.
         Args:
             i (int): The index to be assigned to the generated state.
         Returns:
-            EntityInLocationState: A state object containing entities and their
-            randomly assigned coordenates.
+            EntityInCoordenateState: A state represented as an adjacency matrix,
+            in sparse format (DOK).
         """
 
-        entities = self.model.entities
-        coordenates = [random.choice(self.model.coordenates) for _ in entities]
-        entity_coord_pairs = list(zip(entities, coordenates))
-        u_s = []
-        for pair in entity_coord_pairs:
-            e, c = pair[0], pair[1]
-            u_i = UnitState(entity=e, coordenate=c)
-            u_s.append(u_i)
-        s = EntityInLocationState(attr=u_s, index=i)
-
+        entities = np.arange(self.shape[1])
+        coordenates = np.random.choice(self.shape[0],
+                                       self.shape[1],
+                                       replace=True)
+        sparse_matrix = DOK(shape=self.shape, dtype=int, fill_value=0)
+        entity_coord_pairs = list(zip(coordenates, entities))
+        for x, y in entity_coord_pairs:
+            sparse_matrix[x, y] = 1
+        s = EntityInCoordenateState(am=sparse_matrix, index=i)
         return s
 
-    def create_deltas(self):
+    def create_transitions(self):
         deltas = []
+
         for i in range(0, self.states_qty - 1):
             current_state, reference_state = (
-                self.states[i + 1].attr_as_set,
-                self.states[i].attr_as_set,
+                self.states[i + 1].am,
+                self.states[i].am,
             )
-            d = current_state.difference(reference_state)
-            deltas.append(d)
+
+            diff = current_state.to_coo() - reference_state.to_coo()
+            deltas_i = []
+            for j in range(0, len(diff.data), 2):
+                # get by pairs
+                pair = diff.data[j:j + 2]
+                if pair[0] == -1:
+                    o = j
+                    e = j + 1
+                else:
+                    o = j + 1
+                    e = j
+                delta_j = np.array([diff.coords.T[o], diff.coords.T[e]])
+                deltas_i.append(delta_j)
+            deltas.append(deltas_i)
         self.deltas = deltas
 
+    # The following could be another way to obtain the deltas in case transition for
+    # higher dimentions do not came in sorted pairs.
+    # DO NOT DELETE.
+    # def create_transition(self):
+    #     for e in ends:
+    #         end = diff.coords.T[e]
+    #         zeros_per_column = diff.coords.T[origins] - diff.coords.T[e]
+    #         zeros_per_column = np.sum(zeros_per_column == 0, axis=0)
+    #         i = np.argmax(zeros_per_column)
+    #         o = diff.coords.T[o]
+    #         d = np.array([e,o])
+    # TODO
     def create_fol(self):
 
-        def enumerate_model(
-            element: Union[list[Entity], list[Coordenate]], ) -> list[list]:
+        def enumerate_model(element: Union[list[Entity], list[Coordenate]],
+                            shape_type: str) -> list[list]:
             enumeration = []
             for e in element:
                 if e != self.uncertainty:
-                    enumeration.append(Exists(thing=e))
+                    enumeration.append(Exists(thing=e, shape_str=shape_type))
             return enumeration
 
         def describe_states(state: State) -> list[list]:
             state_sentences = []
-            for unit in state.attr:
-                if unit.coordenate != self.uncertainty:
-                    # state_sentences.append(["In", unit.entity.name, unit.coordenate])
+            for unit in state.am.data:
+                x, y = unit[0], unit[1]
+                e, c = self.idx2e[y], self.idx2c[x]
+                if c != self.uncertainty:
                     state_sentences.append(
-                        In(entity=unit.entity, coordenate=unit.coordenate))
+                        In(entity=e, coordenate=c, shape_str=self.shape_str))
             return state_sentences
 
         def describre_transitions(state: State) -> list[list]:
@@ -673,31 +679,51 @@ class SimpleTracker(BaseModel):
             delta = self.deltas[i]
             transition_sentences = []
             for d in delta:
-                prev_coord = state.get_entity_coordenate(d[0])
-                entity, next_coord = d[0], d[1]
-
+                idx_entity = d[0, 1]
+                # print(idx_entity)
+                idx_prev_coord = d[0, 0]
+                # print(idx_prev_coord)
+                idx_next_coord = d[1, 0]
+                # print(idx_next_coord)
+                entity = self.idx2e[idx_entity]
+                prev_coord = self.idx2c[idx_prev_coord]
+                next_coord = self.idx2c[idx_next_coord]
                 if prev_coord == self.uncertainty:
                     transition_sentences.append(
-                        To(entity=entity, coordenate=next_coord))
+                        To(
+                            entity=entity,
+                            coordenate=next_coord,
+                            shape_str=self.shape_str,
+                        ))
                 elif next_coord == self.uncertainty:
                     transition_sentences.append(
-                        From(entity=entity, coordenate=prev_coord))
+                        From(
+                            entity=entity,
+                            coordenate=prev_coord,
+                            shape_str=self.shape_str,
+                        ))
                 else:
                     transition_sentences.append(
                         random.choice([
-                            To(entity=entity, coordenate=next_coord),
+                            To(
+                                entity=entity,
+                                coordenate=next_coord,
+                                shape_str=self.shape_str,
+                            ),
                             FromTo(
                                 entity=entity,
                                 coordenate1=prev_coord,
                                 coordenate2=next_coord,
+                                shape_str=self.shape_str,
                             ),
                         ]))
             return transition_sentences
 
         sentences = []
-        # get each attribute in self.model and itereate over it
-        sentences.extend(enumerate_model(self.model.entities))
-        sentences.extend(enumerate_model(self.model.coordenates))
+
+        for t, dim_str in zip(self.model.as_tuple, self.shape_str):
+            sentences.extend(enumerate_model(t, dim_str))
+
         sentences.extend(describe_states(self.states[0]))
         for s in self.states[0:-1]:
             sentences.extend(describre_transitions(s))
@@ -707,7 +733,9 @@ class SimpleTracker(BaseModel):
         self.nl = [f.to_nl() for f in self.fol]
 
     def print_transition(self):
-        self.logger.info("Initial state", state=self.states[0])
+        self.logger.info("Initial state", state=self.states[0].am.todense())
         for i, d in enumerate(self.deltas):
-            self.logger.info("Delta", i=i, delta=d)
-        self.logger.info("Final state", state=self.states[-1])
+            aux = [[x[0][0], x[0][1], x[1][1]] for x in d]
+            for d in aux:
+                self.logger.info("Delta", i=i, e=d[0], prev=d[1], next=d[2])
+        self.logger.info("Final state", state=self.states[0].am.todense())

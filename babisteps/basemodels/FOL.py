@@ -7,6 +7,7 @@ from babisteps.basemodels.nodes import Coordenate, Entity
 
 
 class FOL(BaseModel):
+    shape_str: tuple
 
     def to_nl(self):
         pass
@@ -14,13 +15,14 @@ class FOL(BaseModel):
 
 class Exists(FOL):
     thing: Union[Entity, Coordenate]
+    shape_str: str
 
     def to_nl(self):
-        if self.thing.type == "Location":
+        if self.shape_str == "Location":
             return f"There is a {self.thing.name}"
-        elif self.thing.type == "Actor":
+        elif self.shape_str == "Actor":
             return f"{self.thing.name} is present"
-        elif self.thing.type == "Object":
+        elif self.shape_str == "Object":
             return f"There is a {self.thing.name}"
 
 
@@ -29,14 +31,13 @@ class In(FOL):
     coordenate: Coordenate
 
     def to_nl(self) -> str:
-        e_t, c_t = self.entity.type, self.coordenate.type
         e, c = self.entity.name, self.coordenate.name
 
-        if e_t == "Actor" and c_t == "Location":
+        if self.shape_str == ("Location", "Actor"):
             return f"{e} is in the {c}"
-        elif e_t == "Object" and c_t == "Location":
+        elif self.shape_str == ("Object", "Location"):
             return f"The {e} is in the {c}"
-        elif e_t == "Object" and c_t == "Actor":
+        elif self.shape_str == ("Actor", "Object"):
             options = [
                 f"{c} has the {e}.",
                 f"{c} is carrying the {e}.",
@@ -51,10 +52,9 @@ class To(FOL):
     coordenate: Coordenate
 
     def to_nl(self) -> str:
-        e_t, c_t = self.entity.type, self.coordenate.type
         e, c = self.entity.name, self.coordenate.name
 
-        if e_t == "Actor" and c_t == "Location":
+        if self.shape_str == ("Location", "Actor"):
             options = [
                 f"{e} went to the {c}.",
                 f"{e} traveled to the {c}.",
@@ -64,7 +64,7 @@ class To(FOL):
             ]
             return random.choice(options)
 
-        elif e_t == "Object" and c_t == "Location":
+        elif self.shape_str == ("Object", "Location"):
             options = [
                 f"The {e} was carried to the {c}.",
                 f"The {e} was taken to the {c}.",
@@ -72,7 +72,7 @@ class To(FOL):
             ]
             return random.choice(options)
 
-        elif e_t == "Object" and c_t == "Actor":
+        elif self.shape_str == ("Actor", "Object"):
             options = [
                 f"{c} took the {e}.",
                 f"{c} grabbed the {e}.",
@@ -88,16 +88,15 @@ class From(FOL):
     coordenate: Coordenate
 
     def to_nl(self) -> str:
-        e_t, c_t = self.entity.type, self.coordenate.type
         e, c = self.entity.name, self.coordenate.name
-        if e_t == "Actor" and c_t == "Location":
+        if self.shape_str == ("Location", "Actor"):
             options = [
                 f"{e} left the {c}.",
                 f"{e} abandoned the {c}.",
             ]
             return random.choice(options)
 
-        elif e_t == "Object" and c_t == "Location":
+        elif self.shape_str == ("Object", "Location"):
             options = [
                 f"The {e} was carried from the {c}.",
                 f"The {e} was taken from the {c}.",
@@ -105,7 +104,7 @@ class From(FOL):
             ]
             return random.choice(options)
 
-        elif e_t == "Object" and c_t == "Actor":
+        elif self.shape_str == ("Actor", "Object"):
             options = [
                 f"{c} left the {e}.",
                 f"{c} dropped the {e}.",
@@ -122,18 +121,13 @@ class FromTo(FOL):
     coordenate2: Coordenate
 
     def to_nl(self) -> str:
-        e_t, c1_t, c2_t = (
-            self.entity.type,
-            self.coordenate1.type,
-            self.coordenate2.type,
-        )
         e, c1, c2 = (
             self.entity.name,
             self.coordenate1.name,
             self.coordenate2.name,
         )
 
-        if e_t == "Actor" and c1_t == "Location" and c2_t == "Location":
+        if self.shape_str == ("Location", "Actor"):
             options = [
                 f"{e} went from the {c1} to the {c2}.",
                 f"{e} traveled from the {c1} to the {c2}.",
@@ -143,14 +137,14 @@ class FromTo(FOL):
             ]
             return random.choice(options)
 
-        elif e_t == "Object" and c1_t == "Location" and c2_t == "Location":
+        elif self.shape_str == ("Object", "Location"):
             options = [
                 f"The {e} was carried from the {c1} to the {c2}.",
                 f"The {e} was taken from the {c1} to the {c2}.",
                 f"The {e} was moved from the {c1} to the {c2}.",
             ]
             return random.choice(options)
-        elif e_t == "Object" and c1_t == "Actor" and c2_t == "Actor":
+        elif self.shape_str == ("Actor", "Object"):
             options = [
                 f"{c1} gave the {e} to {c2}.",
                 f"{c1} passed the {e} to {c2}.",
