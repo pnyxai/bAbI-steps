@@ -27,15 +27,15 @@ class Exists(FOL):
 
 
 class In(FOL):
-    entity: Entity
-    coordenate: Coordenate
+    entity: Union[Entity, Coordenate]
+    coordenate: Union[Entity, Coordenate]
 
     def to_nl(self) -> str:
         e, c = self.entity.name, self.coordenate.name
 
         if self.shape_str == ("Location", "Actor"):
             return f"{e} is in the {c}"
-        elif self.shape_str == ("Object", "Location"):
+        elif self.shape_str == ("Location", "Object"):
             return f"The {e} is in the {c}"
         elif self.shape_str == ("Actor", "Object"):
             options = [
@@ -48,8 +48,8 @@ class In(FOL):
 
 
 class To(FOL):
-    entity: Entity
-    coordenate: Coordenate
+    entity: Union[Entity, Coordenate]
+    coordenate: Union[Entity, Coordenate]
 
     def to_nl(self) -> str:
         e, c = self.entity.name, self.coordenate.name
@@ -84,8 +84,8 @@ class To(FOL):
 
 
 class From(FOL):
-    entity: Entity
-    coordenate: Coordenate
+    entity: Union[Entity, Coordenate]
+    coordenate: Union[Entity, Coordenate]
 
     def to_nl(self) -> str:
         e, c = self.entity.name, self.coordenate.name
@@ -116,9 +116,9 @@ class From(FOL):
 
 
 class FromTo(FOL):
-    entity: Entity
-    coordenate1: Coordenate
-    coordenate2: Coordenate
+    entity: Union[Entity, Coordenate]
+    coordenate1: Union[Entity, Coordenate]
+    coordenate2: Union[Entity, Coordenate]
 
     def to_nl(self) -> str:
         e, c1, c2 = (
