@@ -1,2 +1,5 @@
 __pycache__
 .ruff_cache
+*.txt
+*output.jsonl
+*results

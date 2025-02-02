@@ -19,8 +19,9 @@ def configure_structlog():
         """
         key_order = ["logger", "level", "event"]
         # Create an ordered dictionary with specified key order
-        reordered = OrderedDict((key, event_dict.pop(key)) for key in key_order
-                                if key in event_dict)
+        reordered = OrderedDict(
+            (key, event_dict.pop(key)) for key in key_order if key in event_dict
+        )
         # Append the remaining keys
         reordered.update(event_dict)
         return reordered
@@ -33,7 +34,7 @@ def configure_structlog():
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        reorder_keys,  # Custom processor to reorder keys        
+        reorder_keys,  # Custom processor to reorder keys
         structlog.processors.JSONRenderer(),  # Outputs events as JSON strings.
     ]
 
@@ -47,7 +48,7 @@ def configure_structlog():
     )
 
 
-def get_logger(name, level=logging.INFO):
+def get_logger(name, level=logging.INFO, log_file="logs.txt"):
     """
     Create and configure a logger with specified name.
 
@@ -58,11 +59,19 @@ def get_logger(name, level=logging.INFO):
     logger = logging.getLogger(name)
     # set level
     logger.setLevel(level)
-    # Add console handler for the logger
+    # Console handler (standard output)
     ch = logging.StreamHandler(sys.stdout)
-    # only add the handler if it doesn't already exist
+    ch.setLevel(level)
+
+    # File handler (write logs to a file)
+    fh = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+    fh.setLevel(level)
+
+    # Only add handlers if they are not already present
     if not logger.hasHandlers():
         logger.addHandler(ch)
+        logger.addHandler(fh)
+
     configure_structlog()
     logger = structlog.wrap_logger(logger)
     loggers[name] = logger
