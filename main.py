@@ -1,6 +1,8 @@
 import argparse
 import time
+import os
 from pathlib import Path
+from datetime import datetime
 
 from babisteps.utils import logger
 from babisteps.utils import proccesing as proc
@@ -27,15 +29,23 @@ def main():
     parser.add_argument("--question", type=str, help="Question to ask")
     parser.add_argument("--answer", type=str, help="Answer to the question")
     parser.add_argument(
-        "--path", type=str, default="./results", help="Path to save the dataset"
+        "--path", type=str, default="./outputs", help="Path to save the script results"
     )
     parser.add_argument("--verbose", type=int, default=1, help="Verbosity level")
     args = parser.parse_args()
 
-    path = Path(args.path)
+    # Get base output folder path
+    output_path = Path(args.path)
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    # Add date string
+    current_date = datetime.now()
+    output_path = Path(os.path.join(output_path, current_date.strftime('%Y-%m-%dT%H:%M:%S')))
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
     # init of excecution
     start_time = time.time()
-    main_logger = logger.get_logger("main", args.verbose)
+    main_logger = logger.get_logger("main", args.verbose, log_file=os.path.join(output_path,"logs.txt"))
 
     if args.task == "simpletracking":
         # Count how many lists are non-empty
@@ -53,7 +63,7 @@ def main():
             objects=args.objects,
             question=args.question,
             answer=args.answer,
-            path=path,
+            path=output_path,
             verbosity=args.verbose,
             logger=main_logger,
         )
@@ -74,7 +84,7 @@ def main():
             objects=args.objects,
             question=args.question,
             answer=args.answer,
-            path=path,
+            path=output_path,
             verbosity=args.verbose,
             logger=main_logger,
         )
