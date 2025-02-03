@@ -18,7 +18,7 @@ python3 main.py \
     --q_stories 2 \
     --states_lenght 3 \
     --question where \
-    --answer yes \
+    --answer unknown \
     --verbose 1
 ```
 
