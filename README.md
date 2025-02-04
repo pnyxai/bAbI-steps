@@ -19,7 +19,7 @@ python3 main.py \
     --states_lenght 3 \
     --question where \
     --answer unknown \
-    --verbose info
+    --verbosity info
 ```
 
 
@@ -33,7 +33,7 @@ python3 main.py \
     --states_lenght 3 \
     --question what \
     --answer none \
-    --verbose debug
+    --verbosity debug
 ```
 
 
