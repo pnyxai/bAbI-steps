@@ -1,22 +1,20 @@
 import json
+import os
 import shutil
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, get_args
+from typing import get_args
 
-from babisteps.basemodels.generators import (
-    ActorInLocationPolar,
-    ActorInLocationWhere,
-    ActorInLocationWho,
-    ActorWithObjectPolar,
-    ActorWithObjectWhat,
-    ActorWithObjectWho,
-    ComplexTracking,
-    EntitiesInCoordenates,
-    ObjectInLocationPolar,
-    ObjectsInLocation,
-    SimpleTracker,
-)
+from babisteps.basemodels.generators import (ActorInLocationPolar,
+                                             ActorInLocationWhere,
+                                             ActorInLocationWho,
+                                             ActorWithObjectPolar,
+                                             ActorWithObjectWhat,
+                                             ActorWithObjectWho,
+                                             ComplexTracking,
+                                             EntitiesInCoordenates,
+                                             ObjectInLocationPolar,
+                                             ObjectsInLocation, SimpleTracker)
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 
@@ -42,7 +40,10 @@ def prepare_path(path: Path, folder_name: str, logger):
     return folder_path
 
 
-def save_as_jsonl(json_list, folder_path: Path, logger, filename="output.jsonl"):
+def save_as_jsonl(json_list,
+                  folder_path: Path,
+                  logger,
+                  filename="output.jsonl"):
     """
     Saves a list of JSON objects as a JSONL file inside the specified folder.
 
@@ -50,13 +51,35 @@ def save_as_jsonl(json_list, folder_path: Path, logger, filename="output.jsonl")
     :param folder_path: Path object representing the target folder
     :param filename: Name of the JSONL file (default: output.jsonl)
     """
-    file_path = folder_path / filename  # Construct full file path
+    try:
+        file_path = folder_path / filename  # Construct full file path
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        for obj in json_list:
-            f.write(json.dumps(obj) + "\n")  # Write each JSON object on a new line
+        with open(file_path, "w", encoding="utf-8") as f:
+            for obj in json_list:
+                f.write(json.dumps(obj) +
+                        "\n")  # Write each JSON object on a new line
+        logger.info("Saved JSONL", file_path=file_path)  # Print confirmation
+    except Exception as e:
+        logger.error("Error saving JSONL", error=str(e))
+        raise e
 
-    logger.info("Saved JSONL", file_path=file_path)  # Print confirmation
+
+def save_as_txt(text: str, folder_path: Path, logger, filename="output.txt"):
+    """
+    Saves a txt plain text.
+
+    :param txt: Text to save
+    :param folder_path: Path object representing the target folder
+    :param filename: Name of the .txt file (default: output.txt)
+    """
+    try:
+        file_path = folder_path / filename  # Construct full file path
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        logger.info("Saved .txt", file_path=file_path)  # Print confirmation
+    except Exception as e:
+        logger.error("Error saving .txt", error=str(e))
+        raise e
 
 
 def create_simpletracking(
@@ -81,7 +104,8 @@ def create_simpletracking(
         shape_str = ("Location", "Actor")
         entities = [Entity(name=entity) for entity in actors]
         coordenates = [Coordenate(name=coordenate) for coordenate in locations]
-        model = EntitiesInCoordenates(entities=entities, coordenates=coordenates)
+        model = EntitiesInCoordenates(entities=entities,
+                                      coordenates=coordenates)
     elif actors and objects and not locations:
         question_request = {
             "polar": ActorWithObjectPolar,
@@ -91,18 +115,23 @@ def create_simpletracking(
         shape_str = ("Actor", "Object")
         entities = [Entity(name=entity) for entity in objects]
         coordenates = [Coordenate(name=coordenate) for coordenate in actors]
-        model = EntitiesInCoordenates(entities=entities, coordenates=coordenates)
+        model = EntitiesInCoordenates(entities=entities,
+                                      coordenates=coordenates)
 
     request = question_request[question]
     folder_name = request.__name__
     assert question in question_request, f"Question {question} not valid"
-    assert answer in list(get_args(request.__annotations__["answer"])), (
-        f"Answer '{answer}' not valid for '{question}'. Valid answers are {list(get_args(request.__annotations__['answer']))}"
+    answer_options = list(get_args(request.__annotations__["answer"]))
+    assert answer in answer_options, (
+        f"Answer '{answer}' not valid for '{question}'",
+        f"Valid answers are {answer_options}.",
     )
+
     folder_path = prepare_path(path, folder_name, logger)
     topic = request(answer=answer)
 
     jsonl_dataset = []
+    txt_dataset = ""
     for s in range(q_stories):
         logger.info("Creating story", story=s)
         generator = SimpleTracker(
@@ -111,15 +140,18 @@ def create_simpletracking(
             topic=topic,
             verbosity=verbosity,
             shape_str=shape_str,
+            log_file=os.path.join(path, "logs.txt"),
         )
         generator.create_ontology()
         generator.create_fol()
 
         json = generator.story.create_json()
         json["id"] = s
+        txt = generator.story.create_txt()
         jsonl_dataset.append(json)
+        txt_dataset += txt
     logger.info("End of stories creation")
-    return jsonl_dataset, folder_path
+    return jsonl_dataset, txt_dataset, folder_path
 
 
 def create_complextracking(
@@ -146,13 +178,16 @@ def create_complextracking(
     request = question_request[question]
     folder_name = request.__name__
     assert question in question_request, f"Question {question} not valid"
-    assert answer in list(get_args(request.__annotations__["answer"])), (
-        f"Answer '{answer}' not valid for '{question}'. Valid answers are {list(get_args(request.__annotations__['answer']))}"
+    answer_options = list(get_args(request.__annotations__["answer"]))
+    assert answer in answer_options, (
+        f"Answer '{answer}' not valid for '{question}'",
+        f"Valid answers are {answer_options}.",
     )
     folder_path = prepare_path(path, folder_name, logger)
     topic = request(answer=answer)
 
     jsonl_dataset = []
+    txt_dataset = ""
     for s in range(q_stories):
         logger.info("Creating story", story=s)
         generator = ComplexTracking(
@@ -161,12 +196,15 @@ def create_complextracking(
             topic=topic,
             verbosity=verbosity,
             shape_str=shape_str,
+            log_file=os.path.join(path, "logs.txt"),
         )
         generator.create_ontology()
         generator.create_fol()
 
         json = generator.story.create_json()
+        txt = generator.story.create_txt()
         json["id"] = s
         jsonl_dataset.append(json)
+        txt_dataset += txt
     logger.info("End of stories creation")
-    return jsonl_dataset, folder_path
+    return jsonl_dataset, txt_dataset, folder_path

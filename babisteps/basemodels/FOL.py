@@ -19,11 +19,11 @@ class Exists(FOL):
 
     def to_nl(self):
         if self.shape_str == "Location":
-            return f"There is a {self.thing.name}"
+            return f"There is a {self.thing.name}."
         elif self.shape_str == "Actor":
-            return f"{self.thing.name} is present"
+            return f"{self.thing.name} is present."
         elif self.shape_str == "Object":
-            return f"There is a {self.thing.name}"
+            return f"There is a {self.thing.name}."
 
 
 class In(FOL):
@@ -34,9 +34,9 @@ class In(FOL):
         e, c = self.entity.name, self.coordenate.name
 
         if self.shape_str == ("Location", "Actor"):
-            return f"{e} is in the {c}"
+            return f"{e} is in the {c}."
         elif self.shape_str == ("Location", "Object"):
-            return f"The {e} is in the {c}"
+            return f"The {e} is in the {c}."
         elif self.shape_str == ("Actor", "Object"):
             options = [
                 f"{c} has the {e}.",
