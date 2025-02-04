@@ -1,6 +1,7 @@
 import logging
 import random
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 import numpy as np
@@ -14,6 +15,20 @@ class State(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     am: SparseArray
     index: int
+    verbosity: Union[int, str] = Field(default=logging.INFO)
+    logger: Optional[Any] = None
+    log_file: Optional[Path] = None
+
+    @model_validator(mode="after")
+    def fill_logger(self):
+        if not self.logger:
+            self.logger = logger.get_logger(
+                # use class name and index to create a unique logger name
+                f"{self.__class__.__name__}_{self.index}",
+                level=self.verbosity,
+                log_file=self.log_file,
+            )
+        return self
 
 
 class Entity(BaseModel):
@@ -92,15 +107,6 @@ class EntityInCoordenateState(State):
 
 class ObjectInLocationStatePolar(State):
     am: SparseArray
-    verbosity: Union[int, str] = Field(default=logging.INFO)
-    logger: Optional[Any] = None
-
-    @model_validator(mode="after")
-    def fill_logger(self):
-        if not self.logger:
-            self.logger = logger.get_logger(
-                f"ObjectInLocationState_{self.index}", level=self.verbosity)
-        return self
 
     def make_actor_transition(
         self,
@@ -112,9 +118,9 @@ class ObjectInLocationStatePolar(State):
         """
         Creates a delta of actor-location pairs based on specified conditions.
         Args:
-            num_transitions (int): 
+            num_transitions (int):
             The number of transitions (actor-location pairs) to create.
-            condition (Callable): 
+            condition (Callable):
             A callable that takes a pair (actor, location) and returns a boolean.
         Returns:
            SparseArray: A SparseArray object representing the new state.
@@ -174,9 +180,9 @@ class ObjectInLocationStatePolar(State):
         """
         Creates a delta of object-actor pairs based on specified conditions.
         Args:
-            num_transitions (int):The number of transitions (object-actor pairs) 
+            num_transitions (int):The number of transitions (object-actor pairs)
             to create.
-            condition (Callable): A callable that takes a pair (object, actor) and 
+            condition (Callable): A callable that takes a pair (object, actor) and
             returns a boolean.
         Returns:
         SparseArray: A SparseArray object representing the new state.
@@ -208,13 +214,18 @@ class ObjectInLocationStatePolar(State):
                 set_y = np.unique(np.append(set_y.T[0], [new_am.shape[1] - 1]))
                 set_y = set(set_y) - set([y])
                 if not set_y:
-                    self.logger.debug("No valid transition", e=e, set_y=set_y)
+                    e_converted = [
+                        int(item) for sublist in e for item in sublist
+                    ]
+                    self.logger.debug("No valid transition",
+                                      e=e_converted,
+                                      set_y=set_y)
                     valid_transition = False
                     break  # Break out of the for loop and continue the while loop
                 next_y = random.choice(list(set_y))
                 new_am[x, next_y, z] = 1
                 new_am[i_e] = 0
-                #clean the nothing objet, to avoid errors
+                # clean the nothing objet, to avoid errors
                 new_am[x, next_y, -1] = 0
                 if new_am[x, y, :-1].to_coo().sum() == 0:
                     self.logger.debug("Actor with 'nothing",
@@ -223,6 +234,7 @@ class ObjectInLocationStatePolar(State):
                     new_am[x, y, -1] = 1
 
             if not valid_transition:
+                t += 1
                 continue  # Continue the while loop if no valid actor is found
             if condition(new_am):
                 pass

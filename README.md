@@ -19,7 +19,7 @@ python3 main.py \
     --states_lenght 3 \
     --question where \
     --answer unknown \
-    --verbose 1
+    --verbose info
 ```
 
 
@@ -33,7 +33,7 @@ python3 main.py \
     --states_lenght 3 \
     --question what \
     --answer none \
-    --verbose 1
+    --verbose debug
 ```
 
 
@@ -45,11 +45,10 @@ python3 main.py \
 python3 main.py \
     --task complextracking \
     --locations bedroom,bathroom,kitchen \
-    --actors alice,bob,charlie \
+    --actors Alice,Bob,Charlie \
     --objects book,ball,pen \
     --q_stories 3 \
-    --states_lenght 5 \
+    --states_lenght 20 \
     --question polar \
-    --answer yes \
-    --verbose 1
+    --answer yes
 ```
