@@ -290,3 +290,23 @@ class ObjectInLocationStatePolar(State):
         array = np.sum(new_am[:, :, :-1].to_coo(), axis=(0, 1)).todense()
         flag = all(array == 1)
         return flag
+
+
+class ObjectInLocationState(State):
+    """This clase consider the What/Where question/answer pairs for ObjectInLocation BUT
+    using anti-locations coordinates, instead of having only the 'nowhere' location.
+    """
+    am: SparseArray
+
+    def create_transition(
+        self,
+        num_transitions: int,
+        condition: Callable,
+        axis: int,
+        filter: Optional[Callable] = None,
+    ) -> Union[SparseArray, None]:
+
+        # TODO: This will be the class in charge of
+        # make_actor_transition and make_object_transition
+        
+        pass
