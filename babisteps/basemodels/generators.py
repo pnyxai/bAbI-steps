@@ -889,6 +889,7 @@ class ComplexTracking(BaseModel):
     dim1_idx_to_obj: Optional[dict] = None
     dim2_idx_to_obj: Optional[dict] = None
     shape: Optional[tuple[int, int, int]] = None
+    location_to_locations_map: Optional[dict] = None
     shape_str: tuple
     p_antilocation: float = 0.5  # to be false, higher than
     location_matrix: Optional[Any] = None
@@ -1023,7 +1024,7 @@ class ComplexTracking(BaseModel):
         # Create a mapping of actor -> location to ensure one location per actor
         actor_to_location = dict(zip(unique_actors, location_choices))
 
-        sparse_matrix = DOK(shape=self.shape, dtype=int, fill_value=0)
+        sparse_matrix = DOK(shape=self.shape, dtype=bool, fill_value=0)
         for obj, actor in zip(objects, actor_choices):
             loc = actor_to_location[actor]  # Ensure the actor gets a unique location
             sparse_matrix[loc, actor, obj] = 1
@@ -1222,7 +1223,7 @@ class ComplexTracking(BaseModel):
 
         # Create a mapping of actor -> location to ensure one location per actor
         actor_to_location = dict(zip(unique_actors, location_choices))
-        sparse_matrix = DOK(shape=self.shape, dtype=int, fill_value=0)
+        sparse_matrix = DOK(shape=self.shape, dtype=bool, fill_value=0)
         for obj, actor in zip(objects, actor_choices):
             # get the location for the actor
             # list_loc = actor_to_location[actor]
@@ -1254,6 +1255,35 @@ class ComplexTracking(BaseModel):
         )
         return s
 
+    def create_transition_map(
+        self,
+    ):
+        """
+        Given a matrix with possible locations for actors, this function return a dictionary
+        where:
+        - the keys are the origen of a transition
+        - the values are a list of possible destinations.
+        """
+        n_l = self.location_matrix.shape[1] // 2
+        location_with_allowed_actor_transitions = [
+            np.where(row)[0].tolist() for row in self.location_matrix[: n_l * 2]
+        ]
+        first_half = location_with_allowed_actor_transitions[:n_l]
+        second_half = location_with_allowed_actor_transitions[n_l:]
+
+        # for the first half
+        map = {}
+        for f_i in first_half:
+            # all first half except the current one
+            map[tuple(f_i)] = [i for i in first_half if i != f_i]
+        dict_second_half = {}
+        for i_l, s_i in enumerate(second_half):
+            # only the corresponding in the first half
+            dict_second_half[tuple(s_i)] = [first_half[i_l]]
+        # create a variable with the joined dictionaries
+        map.update(dict_second_half)
+        return map
+
     def _object_in_location_what(self):
         d0 = self.model.dim0[0]
         d1 = self.model.dim1[0]
@@ -1269,6 +1299,7 @@ class ComplexTracking(BaseModel):
         self.model.dim2.append(self.uncertainty[2])
         self._create_aux()
         self.location_matrix = operators.generate_location_matrix(self.shape[0] // 2)
+        self.location_to_locations_map = self.create_transition_map()
         self.logger.info(
             "Creating _object_in_location_polar",
             topic=type(self.topic).__name__,

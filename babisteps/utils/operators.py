@@ -127,7 +127,7 @@ def filter_unique_parent_combinations(combinations, n, validate_func):
     return unique_combinations
 
 
-def generate_OR_parents(x):
+def generate_OR_parents(x:np.array):
     n = len(x) // 2
     first_half, second_half = np.array(x[:n]), np.array(x[n:])
     # do we have all zeros in the first half?
@@ -151,7 +151,7 @@ def generate_OR_parents(x):
     # Create special case where child is combination of
     # the full nowhere parent and the child == x.
     # Add the nowhere_parent special case
-    nowhere_parent = ([0] * n + [1] * n, x.copy())
+    nowhere_parent = ([0] * n + [1] * n, x.copy().astype(int).tolist())
     solutions.append(nowhere_parent)
     # Edge case: switch the unique 1 in first_half to 0 and generate additional parents.
     index_of_one = int(np.where(first_half == 1)[0][0])
