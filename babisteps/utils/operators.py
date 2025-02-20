@@ -115,32 +115,44 @@ def filter_unique_parent_combinations(combinations, n, validate_func):
     for x1, x2 in combinations:
         if validate_func(x1, n) and validate_func(x2, n):
             # Ensure consistent ordering using lexicographical comparison
-            if tuple(x1) <= tuple(x2): # Compare as tuples for lexicographical order
-                pair = (tuple(x1), tuple(x2)) # Use tuple for hashability
+            if tuple(x1) <= tuple(x2):  # Compare as tuples for lexicographical order
+                pair = (tuple(x1), tuple(x2))  # Use tuple for hashability
             else:
                 pair = (tuple(x2), tuple(x1))
 
             if pair not in seen_combinations:
-                unique_combinations.append((list(x1), list(x2))) # Back to list for output
+                unique_combinations.append(
+                    (list(x1), list(x2))
+                )  # Back to list for output
                 seen_combinations.add(pair)
 
     return unique_combinations
 
 
-def generate_OR_parents(x:np.array):
+def generate_OR_parents(x: np.array):
     n = len(x) // 2
     first_half, second_half = np.array(x[:n]), np.array(x[n:])
+
     # do we have all zeros in the first half?
     if not any(first_half):
+        # Case where x is THE NOWHERE.
+        if all(second_half):
+            return ([0] * n + [1] * n, [0] * n + [1] * n)
+
         assert np.sum(second_half) != n - 1, (
             "the second half correspond to N-1 ones. Error!"
         )
-        return filter_unique_parent_combinations(
+        solutions = filter_unique_parent_combinations(
             generate_parent_combinations(x), n, is_valid_parent
         )
-    # asswert thar in the first half there is only one 1.
+        nowhere_parent = ([0] * n + [1] * n, x.copy().astype(int).tolist())
+        solutions.append(nowhere_parent)
+        return solutions
+
+    # assert thar in the first half there is only one 1.
     assert sum(first_half) == 1, "Expected exactly one 1 in the first half."
     # assert that sum of first half and second half is equal to [1, 1, 1, 1]
+
     sum_halfs = first_half + second_half
     assert np.array_equal(sum_halfs, np.array([1] * n)), (
         "The result of first half + second half is NOT equal to all ones."

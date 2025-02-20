@@ -863,6 +863,13 @@ class ObjectsInLocation(BaseModel):
         random.shuffle(self.dim2)
         return self
 
+    @model_validator(mode="after")
+    def check_dimentions(self):
+        # validate that len(dim0) is grater than 2
+        if not len(self.dim0) > 2:
+            raise ValueError("dim0 should have at least 3 locations")
+        return self
+
     @property
     def as_tuple(self):
         return (self.dim0, self.dim1, self.dim2)
@@ -892,6 +899,7 @@ class ComplexTracking(BaseModel):
     location_to_locations_map: Optional[dict] = None
     shape_str: tuple
     p_antilocation: float = 0.5  # to be false, higher than
+    p_object_in_actor: Optional[float] = None
     location_matrix: Optional[Any] = None
     p_move_d2: float = 0.5  # to be true, lower than
     state_class: Optional[State] = None
@@ -914,6 +922,13 @@ class ComplexTracking(BaseModel):
                 f"Length mismatch: 'model.as_tuple()' has length {len(model_tuple)} "
                 f"but 'shape_str' has length {len(self.shape_str)}."
             )
+        return self
+
+    @model_validator(mode="after")
+    def fill_p_object_in_actor(self):
+        # If not defined, p_object_in_actor is set to 1/len(dim2)+1 (to consider nobody)
+        if not self.p_object_in_actor:
+            self.p_object_in_actor = 1 / (len(self.model.dim1) + 1)
         return self
 
     def load_ontology_from_topic(self) -> Callable:
@@ -1013,10 +1028,12 @@ class ComplexTracking(BaseModel):
         self.logger.debug("Creating Random State", shape=self.shape)
         # Step 1: List of  objects
         objects = np.arange(self.shape[2] - 1)
+        actors = np.arange(self.shape[1])
         # Step 2: Pick N actors (can be repeated)
-        num_objects = len(objects)
-        actor_choices = np.random.choice(self.shape[1], num_objects, replace=True)
-        # Step 3: Assign locations for the chosen actors
+        objects, actor_choices, objects_nobody = self.assign_objects(
+            objects,
+            actors,  # include the nobody actor
+        )
         unique_actors = np.unique(actor_choices)
         location_choices = np.random.choice(
             self.shape[0], len(unique_actors), replace=True
@@ -1024,20 +1041,26 @@ class ComplexTracking(BaseModel):
         # Create a mapping of actor -> location to ensure one location per actor
         actor_to_location = dict(zip(unique_actors, location_choices))
 
-        sparse_matrix = DOK(shape=self.shape, dtype=bool, fill_value=0)
+        sparse_matrix = DOK(shape=self.shape, dtype=np.int8, fill_value=0)
         for obj, actor in zip(objects, actor_choices):
             loc = actor_to_location[actor]  # Ensure the actor gets a unique location
             sparse_matrix[loc, actor, obj] = 1
+
+        # Step 4: Add the objects in nobody to some location
+        if objects_nobody:
+            for obj in objects_nobody:
+                loc = np.random.choice(self.shape[0])
+                sparse_matrix[loc, -1, obj] = 1
 
         # Get actors with nothing
         AWN = np.where(
             (sparse_matrix[:, :, :-1] == 0).to_coo().sum(axis=(0, 2)).todense()
             == sparse_matrix.shape[0] * (sparse_matrix.shape[2] - 1)
         )[0]
-        AWN = list(AWN)
+        AWN = np.delete(AWN, np.where(AWN == sparse_matrix.shape[1] - 1))
         # no for each actor with nothing, pick a random place, and give then the
         # `nothing`(-1) object
-        if AWN:
+        if AWN.size:
             for a in AWN:
                 loc = np.random.choice(sparse_matrix.shape[0])
                 sparse_matrix[loc, a, -1] = 1
@@ -1189,7 +1212,210 @@ class ComplexTracking(BaseModel):
         return s
 
     def choice_known_location(self):
-        return np.random.uniform(0, 1) < self.p_antilocation
+        """
+        This function return a boolean value based on the probability of
+        the antilocation.
+        """
+        return np.random.uniform(0, 1) > self.p_antilocation
+
+    def get_random_location(self, min_loc_matrix: int, max_loc_matrix: int):
+        """
+        This function return a random index from the location matrix given
+        the boundaries: min_loc_matrix (for known locations) and max_loc_matrix
+        (for unknown locations).
+        """
+        num_locations = self.shape[0] // 2
+        if self.choice_known_location():
+            i_l = random.randint(min_loc_matrix, num_locations)
+        else:
+            i_l = random.randint(
+                num_locations,
+                max_loc_matrix,  # self.location_matrix.shape[0] - 1
+            )
+        return i_l
+
+    def refine_generation(self, objects, actor_choices, objects_nobody):
+        """This functions inteand to create a mapping strcuture for
+        objects and actors based on the topic and awer types.
+        It has to limit the possible locations for the objects and actors.
+        Args:
+            objects (np.array): list of object asigned to actors.
+            actor_choices (np.array): list of actors that have an assigned object. object[i] is in actor[i]
+            objects_nobody (np.array): list of object owned by nobody.
+        """
+        num_locations = self.shape[0] // 2
+        actor_in_location_fixed = {}
+        obs_nb_locs = []
+        actor = None
+        if isinstance(self.topic, ObjectInLocationWhat):
+            if self.topic.answer == "designated_object":
+                min_loc_matrix = 1
+                max_loc_matrix = self.location_matrix.shape[0] - 1
+                if objects.size and objects[0] == 0:
+                    actor = actor_choices[0]
+                    objs_to_re_alloc = np.where(actor_choices == actor)[0]
+                    objs_to_re_alloc = objs_to_re_alloc[1:]
+                    if objs_to_re_alloc.size:
+                        ####################
+                        # OBJECT REASSIGNMENT
+                        ####################
+                        # generate the list of possibles actors to re-allocate
+                        actr_indexes = np.arange(self.shape[1])
+                        realloc_actr_indexes = np.delete(actr_indexes, actor)
+                        (
+                            realloc_objects,
+                            realloc_actor_choices,
+                            realloc_objects_nobody,
+                        ) = self.assign_objects(objs_to_re_alloc, realloc_actr_indexes)
+                        objects = np.delete(objects, objs_to_re_alloc)
+                        actor_choices = np.delete(actor_choices, objs_to_re_alloc)
+                        # update the objects, actor_choices and objects_nobody
+                        objects = np.concatenate([objects, realloc_objects])
+                        actor_choices = np.concatenate(
+                            [actor_choices, realloc_actor_choices]
+                        )
+                        objects_nobody = np.concatenate(
+                            [objects_nobody, realloc_objects_nobody]
+                        )
+                    ####################
+                    # END OBJECT REASSIGNMENT
+                    ####################
+
+                for a_i in np.unique(actor_choices):
+                    i_l = (
+                        0
+                        if actor == a_i
+                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    )
+                    actor_in_location_fixed[a_i] = i_l
+
+                for obj in objects_nobody:
+                    i_l = (
+                        0
+                        if obj == 0
+                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    )
+                    obs_nb_locs.append(i_l)
+
+            elif self.topic.answer == "none":
+                min_loc_matrix = 1
+                # Here we do not allow the full nowhere case
+                max_loc_matrix = self.location_matrix.shape[0] - 1 - 1
+                for a_i in np.unique(actor_choices):
+                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    actor_in_location_fixed[a_i] = i_l
+
+                for obj in objects_nobody:
+                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    obs_nb_locs.append(i_l)
+
+            elif self.topic.answer == "unknown":
+                min_loc_matrix = 1
+                max_loc_matrix = self.location_matrix.shape[0] - 1
+                for a_i in np.unique(actor_choices):
+                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    actor_in_location_fixed[a_i] = i_l
+
+                for obj in objects_nobody:
+                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    obs_nb_locs.append(i_l)
+
+            else:
+                raise ValueError(
+                    "Error in refine_generation, answer should be 'designated_object', 'none' or 'unknown'"
+                )
+
+        if isinstance(self.topic, ObjectInLocationWhere):
+            if self.topic.answer == "designated_location":
+                min_loc_matrix = 0
+                max_loc_matrix = self.location_matrix.shape[0] - 1
+                if objects.size and objects[0] == 0:
+                    actor = actor_choices[0]
+                for a_i in np.unique(actor_choices):
+                    i_l = (
+                        0
+                        if actor == a_i
+                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    )
+                    actor_in_location_fixed[a_i] = i_l
+                for obj in objects_nobody:
+                    i_l = (
+                        0
+                        if obj == 0
+                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    )
+                    obs_nb_locs.append(i_l)
+
+            elif self.topic.answer == "unknown":
+                min_loc_matrix = 0
+                max_loc_matrix = self.location_matrix.shape[0] - 1
+                if objects.size and objects[0] == 0:
+                    actor = actor_choices[0]
+                for a_i in np.unique(actor_choices):
+                    if actor == a_i:
+                        i_l = random.randint(num_locations, max_loc_matrix)
+                    else:
+                        i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    actor_in_location_fixed[a_i] = i_l
+
+                for obj in objects_nobody:
+                    if obj == 0:
+                        i_l = random.randint(num_locations, max_loc_matrix)
+                    else:
+                        i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    obs_nb_locs.append(i_l)
+            else:
+                raise ValueError(
+                    "Error in refine_generation, answer should be 'designated_location' or 'unknown'"
+                )
+
+        # Converting objects_nobody to a list of integers
+        objects_nobody = [int(x) for x in objects_nobody]
+        # Converting keys in actor_in_location_fixed to python int
+        actor_in_location_fixed = {
+            int(k): v for k, v in actor_in_location_fixed.items()
+        }
+        return (
+            objects,
+            actor_choices,
+            objects_nobody,
+            actor_in_location_fixed,
+            obs_nb_locs,
+        )
+
+    def assign_objects(self, objects, actors):
+        """
+        A function that given a list of objects, and a list of actors
+        (where in the actors[-1] is referenced the nobody actor), it
+        returns a list of objects, a list of actors, and a list of objects
+        that are assigned to the nobody actor.
+        The ocurrence of an object beeing in the nobody is given by a
+        binomial distribution, where the probability of an object beeing
+        in the nobody is given by `self.p_object_in_actor`.
+        All arrays are just index.
+        Args:
+            objects (np.array): list of objects to be assigned to actors.
+            actors (np.array): list of actors to be assigned to objects.
+        Returns:
+            tuple: a tuple with the following elements:
+                - objects (np.array): list of objects to be assigned to actors.
+                - actor_choices (np.array): list of actors to be assigned to objects.
+                - objects_nobody (np.array): list of objects that are assigned to the nobody
+        """
+        num_objects = len(objects)
+        nb_actor = actors[-1]
+        assert nb_actor == self.shape[1] - 1, (
+            "The last actor should be the nobody actor"
+        )
+        actor_choices = np.random.choice(actors[:-1], num_objects, replace=True)
+        actor_choices = actor_choices + 1
+        nb_vector = np.random.binomial(1, self.p_object_in_actor, num_objects)
+        actor_choices = nb_vector * actor_choices
+        actor_choices = actor_choices - 1
+        objects_nobody = objects[actor_choices < 0].tolist()
+        actor_choices = actor_choices[actor_choices >= 0]
+        objects = objects[actor_choices >= 0]
+        return objects, actor_choices, objects_nobody
 
     def create_random_state_with_antilocations(self, i: int) -> State:
         """
@@ -1203,27 +1429,49 @@ class ComplexTracking(BaseModel):
         self.logger.debug("Creating Random State", shape=self.shape)
         # Step 1: List of  objects
         objects = np.arange(self.shape[2] - 1)
+        actors = np.arange(self.shape[1])
         # Step 2: Pick N actors (can be repeated)
-        num_objects = len(objects)
-        num_locations = self.shape[0] // 2
-        actor_choices = np.random.choice(self.shape[1], num_objects, replace=True)
+        objects, actor_choices, objects_nobody = self.assign_objects(
+            objects,
+            actors,  # include the nobody actor
+        )
+        ############################
+        # REFINE GENERATION!
+        ############################
+        (
+            objects,
+            actor_choices,
+            objects_nobody,
+            actor_in_location_fixed,
+            obs_nb_locs,
+        ) = self.refine_generation(objects, actor_choices, objects_nobody)
+        self.logger.debug(
+            "Refine generation",
+            objects=objects,
+            actor_choices=actor_choices,
+            objects_nobody=objects_nobody,
+            actor_in_location_fixed=actor_in_location_fixed,
+            obs_nb_locs=obs_nb_locs,
+        )
+        ############################
+        # END REFINE GENERATION!
+        ############################
         unique_actors = np.unique(actor_choices)
-        # conver unique actors to list of int
         unique_actors = unique_actors.tolist()
         # Step 3: Assign locations for the chosen actors
         location_choices = []
         for a in unique_actors:
-            if self.choice_known_location():
-                i_l = random.randint(0, num_locations)
-            else:
-                i_l = random.randint(num_locations, self.location_matrix.shape[0] - 1)
+            i_l = actor_in_location_fixed[a]
             vector = self.location_matrix[i_l]
-            idx = np.where(vector == 1)
-            location_choices.append(idx[0].tolist())
+            idx = np.where(vector == 1)[0].tolist()
+            self.logger.debug(
+                "Step 3: Assign locations for the chosen actors", a=a, i_l=i_l, idx=idx
+            )
+            location_choices.append(idx)
 
         # Create a mapping of actor -> location to ensure one location per actor
         actor_to_location = dict(zip(unique_actors, location_choices))
-        sparse_matrix = DOK(shape=self.shape, dtype=bool, fill_value=0)
+        sparse_matrix = DOK(shape=self.shape, dtype=np.int8, fill_value=0)
         for obj, actor in zip(objects, actor_choices):
             # get the location for the actor
             # list_loc = actor_to_location[actor]
@@ -1231,23 +1479,36 @@ class ComplexTracking(BaseModel):
             for loc in list_loc:
                 sparse_matrix[loc, actor, obj] = 1
 
-        # Get actors with nothing
+        # Step 4: Add the objects in nobody to some location
+        nb_location_choices = []
+        for i_l in obs_nb_locs:
+            vector = self.location_matrix[i_l]
+            idx = np.where(vector == 1)[0].tolist()
+            nb_location_choices.append(idx)
+        # create a mapping of objects in nobody location
+        obj_to_location = dict(zip(objects_nobody, nb_location_choices))
+        self.logger.debug("Objects in nobody location", obj_to_location=obj_to_location)
+        for obj, loc in obj_to_location.items():
+            for l_i in loc:
+                sparse_matrix[l_i, -1, obj] = 1
+
+        # Get actors with none object (a.k.a `nothing`)
         AWN = np.where(
             (sparse_matrix[:, :, :-1] == 0).to_coo().sum(axis=(0, 2)).todense()
             == sparse_matrix.shape[0] * (sparse_matrix.shape[2] - 1)
         )[0]
-        AWN = list(AWN)
+        # delete nobody sparse_matrix.shape[1] - 1
+        AWN = np.delete(AWN, np.where(AWN == (sparse_matrix.shape[1] - 1)))
         # no for each actor with nothing, pick a random place, and give then the
         # `nothing`(-1) object
-        if AWN:
+        if AWN.size:
+            min_loc_matrix = 0
+            max_loc_matrix = self.location_matrix.shape[0] - 1
             for a in AWN:
-                if self.choice_known_location():
-                    i_l = random.randint(0, num_locations)
-                else:
-                    i_l = random.randint(
-                        num_locations, self.location_matrix.shape[0] - 1
-                    )
+                i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                vector = self.location_matrix[i_l]
                 list_loc = np.where(vector == 1)[0].tolist()
+                self.logger.debug("Actor with nothing location", a=a, l=list_loc)
                 for loc in list_loc:
                     sparse_matrix[loc, a, -1] = 1
         s = self.state_class(
@@ -1273,9 +1534,11 @@ class ComplexTracking(BaseModel):
 
         # for the first half
         map = {}
-        for f_i in first_half:
+        for i, f_i in enumerate(first_half):
             # all first half except the current one
             map[tuple(f_i)] = [i for i in first_half if i != f_i]
+            # add also the element i from the second half
+            map[tuple(f_i)].extend([second_half[i]])
         dict_second_half = {}
         for i_l, s_i in enumerate(second_half):
             # only the corresponding in the first half
@@ -1301,7 +1564,7 @@ class ComplexTracking(BaseModel):
         self.location_matrix = operators.generate_location_matrix(self.shape[0] // 2)
         self.location_to_locations_map = self.create_transition_map()
         self.logger.info(
-            "Creating _object_in_location_polar",
+            "Creating _object_in_location_what",
             topic=type(self.topic).__name__,
             answer=self.topic.answer,
             l=d0.name,
@@ -1319,12 +1582,13 @@ class ComplexTracking(BaseModel):
 
             def check_designated_object(x) -> bool:
                 n_l = x.shape[0] // 2
-                in_designated_location = x[:, :, 0].to_coo().T[0][0] == 1
-                f_half = x[:, :, 0].to_coo().T[0][:n_l]
-                s_half = x[:, :, 0].to_coo().T[0][n_l:]
+                in_designated_location = x[0, :, 0].to_coo().sum() == 1
+                y = int(list(x[0, :, 0].data.keys())[0][0])
+                f_half = x[:, y, 0].todense()[:n_l]
+                s_half = x[:, y, 0].todense()[n_l:]
                 # validate that vector of ones is generated.
-                valid_designated_ok = list((f_half + s_half).todense()) == ([1] * n_l)
-                # Fot the corresponding anti-location, for all the other objects (1:-1)
+                valid_designated_ok = list(f_half + s_half) == ([1] * n_l)
+                # For the corresponding anti-location, for all the other objects (1:-1)
                 # there should be certainty that they are in the anti-location.
                 current_in_not_l = np.array(
                     x[n_l, :, 1:-1].to_coo().sum(axis=0).todense()
@@ -1346,7 +1610,7 @@ class ComplexTracking(BaseModel):
                 )
 
             condition = check_designated_object
-        if self.topic.answer == "none":
+        elif self.topic.answer == "none":
 
             def check_none(x) -> bool:
                 n_l = x.shape[0] // 2
@@ -1364,7 +1628,7 @@ class ComplexTracking(BaseModel):
                 return is_empty_location and all_not_in_l and not_object_in_full_nowhere
 
             condition = check_none
-        if self.topic.answer == "unknown":
+        elif self.topic.answer == "unknown":
 
             def check_unknown(x) -> bool:
                 n_locations = x.shape[0] // 2
@@ -1388,15 +1652,87 @@ class ComplexTracking(BaseModel):
 
             condition = check_unknown
 
+        else:
+            raise ValueError(
+                "Invalid answer value, should be 'designated_object', 'none' or 'unknown'"
+            )
+
         states[i] = self.initialize_state_with_antilocations(i, condition)
-        # for j in list(reversed(range(i))):
-        #    condition = lambda x: True
-        #    axis = 2 if self.choice() else 1
-        #    states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+        for j in list(reversed(range(i))):
+            condition = lambda x: True
+            axis = 2 if self.choice() else 1
+            states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+
         return states
 
     def _object_in_location_where(self):
-        raise NotImplementedError("Not implemented yet")
+        d0 = self.model.dim0[0]
+        d1 = self.model.dim1[0]
+        d2 = self.model.dim2[0]
+        self.topic.d0 = d0
+        self.topic.d1 = d1
+        self.topic.d2 = d2
+        # for dim0, due to anti locations, i need to add each element again
+        # to the list, BUT, adding the 'anti-' prefix in each element name
+        anti_locations = [Coordenate(name=f"anti-{d.name}") for d in self.model.dim0]
+        self.model.dim0.extend(anti_locations)
+        self.model.dim1.append(self.uncertainty[1])
+        self.model.dim2.append(self.uncertainty[2])
+        self._create_aux()
+        self.location_matrix = operators.generate_location_matrix(self.shape[0] // 2)
+        self.location_to_locations_map = self.create_transition_map()
+        self.logger.info(
+            "Creating _object_in_location_where",
+            topic=type(self.topic).__name__,
+            answer=self.topic.answer,
+            l=d0.name,
+            a=d1.name,
+            o=d2.name,
+            location_matrix_MB="{:.2f} MB".format(
+                self.location_matrix.nbytes / 1024 / 1024
+            ),
+        )
+
+        states = [None] * self.states_qty
+        i = self.states_qty - 1
+        if self.topic.answer == "designated_location":
+
+            def check_designated_location(x) -> bool:
+                n_l = x.shape[0] // 2
+                in_designated_location = x[0, :, 0].to_coo().sum() == 1
+                y = int(list(x[0, :, 0].data.keys())[0][0])
+                f_half = x[:, :, 0].to_coo().T[y][:n_l]
+                s_half = x[:, :, 0].to_coo().T[y][n_l:]
+                # validate that vector of ones is generated.
+                valid_designated_ok = list((f_half + s_half).todense()) == ([1] * n_l)
+                return in_designated_location and valid_designated_ok
+
+            condition = check_designated_location
+        elif self.topic.answer == "unknown":
+
+            def check_unknown(x) -> bool:
+                n_l = x.shape[0] // 2
+                not_in_known_location = x[:n_l, :, 0].to_coo().sum() == 0
+                # TODO: Check that is in valids anti-locations
+                return not_in_known_location
+
+            condition = check_unknown
+        else:
+            raise ValueError(
+                "Invalid answer value, should be 'designated_location' or 'unknown'"
+            )
+
+        states[i] = self.initialize_state_with_antilocations(i, condition)
+        for j in list(reversed(range(i))):
+            condition = lambda x: True
+            axis = 2 if self.choice() else 1
+            states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+
+        # TODO: It will be required a forward pass.
+        # This forward pass will need to catch the deltas, and based on that update all the state information.
+        # The implications of this will be defined later.
+
+        return states
 
     def create_new_state(
         self,
@@ -1418,8 +1754,18 @@ class ComplexTracking(BaseModel):
             State: The new state of the entity in the location after
             applying the transitions.
         """
-
-        new_am = state.create_transition(self.num_transitions, condition, axis, filter)
+        if isinstance(self.topic, ObjectInLocationPolar):
+            new_am = state.create_transition(
+                self.num_transitions, condition, axis, filter
+            )
+        elif isinstance(self.topic, (ObjectInLocationWhat, ObjectInLocationWhere)):
+            new_am = state.create_transition(
+                self.num_transitions,
+                self.location_to_locations_map,
+                condition,
+                axis,
+                filter,
+            )
         if new_am is None:
             self.logger.error(
                 "Fail both: make_actor_transition & make_object_transition"

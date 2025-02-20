@@ -408,7 +408,7 @@ class ObjectInLocationState(State):
             filtered_am = self.am[:, :, z] == 1
             x_y = list(filtered_am.data.keys())[0]
             y = int(x_y[1])
-            current_location = (
+            current_location = list(
                 self.actor_locations_map[y]
                 if y in self.actor_locations_map
                 else self.objects_map["object_location"][z]
@@ -432,6 +432,7 @@ class ObjectInLocationState(State):
             parents_possibles = ops.generate_OR_parents(v_position)
             object_transitions[z] = {
                 "owner": y,
+                "current_location": current_location,
                 "from_possible_parents": set_y,
                 "possible_parents_locations": parents_possibles,
             }
@@ -455,16 +456,78 @@ class ObjectInLocationState(State):
         Returns:
         SparseArray: A SparseArray object representing the new state.
         """
-        # TODO:
-        # 1. Pick a random object
-        # 2. Pick a random actor to give that object to
-        # 3. Remove the object from the current actor and give it to the new actor
-        # 4. If the actor the has no objects, give them the 'nothing' object.
-        # 5. Check if the condition is met
-        # 5.a If the condition is met, return the new state
-        # 5.b If the condition is not met, quit the case analized from the possible transitions
-        # and try with another one.
-        pass
+        new_am = deepcopy(self.am)
+        obj_txs_tmp = deepcopy(obj_txs)
+        t = 0
+        nb = new_am.shape[1] - 1
+        while t < limit:
+            # 1. Pick a random key from obj_txs_tmp
+            obj_rnd = random.choice(list(obj_txs_tmp.keys()))
+            # 2. Pick a random actor to give that object to
+            # from obj_txs_tmp[obj_rnd]["from_possible_parents"]
+            previous_parent_rnd = random.choice(
+                obj_txs_tmp[obj_rnd]["from_possible_parents"]
+            )
+            current_loc = obj_txs_tmp[obj_rnd]["current_location"]
+            owner = obj_txs_tmp[obj_rnd]["owner"]
+            # 3. Pick a random possible_parents_locations and random choice betwen x1, x2
+            # from obj_txs_tmp[obj_rnd]["possible_parents_locations"]
+            possible_parents_locations = random.choice(
+                obj_txs_tmp[obj_rnd]["possible_parents_locations"]
+            )
+            # Assing x1,x2 OR to owner/previous_parent_rnd
+            c = random.getrandbits(1)
+            owner_prev_loc = np.array(possible_parents_locations[c])
+            owner_prev_loc = np.where(owner_prev_loc == 1)[0].tolist()
+            previous_parent_rnd_loc = np.array(possible_parents_locations[1 - c])
+            previous_parent_rnd_loc = np.where(previous_parent_rnd_loc == 1)[0].tolist()
+            # 4.a Remove obj_rnd from the current actor
+            new_am[:, owner, obj_rnd] = 0
+            # 5. Move all the objects that the actor has from in current_loc
+            # to the previous_parent_rnd_loc
+            for z in obj_txs:
+                if obj_txs[z]["owner"] == previous_parent_rnd:
+                    for x in current_loc:
+                        new_am[x, previous_parent_rnd, z] = 0
+                    for x in previous_parent_rnd_loc:
+                        new_am[x, previous_parent_rnd, z] = 1
+            # 5. Give the object to the new actor
+            for x in previous_parent_rnd_loc:
+                new_am[x, previous_parent_rnd, obj_rnd] = 1
+
+            # 6. Now, clean the `nothing` from previous_parent_rnd (now it has an object!)
+            new_am[:, previous_parent_rnd, -1] = 0
+            # 5. If the owner the has no objects, give them the 'nothing' object, except
+            # if the owner is the nobody actor
+            if new_am[:, owner, :-1].to_coo().sum() == 0 and owner != nb:
+                # log that the owner has nothing
+                self.logger.debug(
+                    "Actor with 'nothing'", owner=owner, owner_prev_loc=owner_prev_loc
+                )
+                for x in owner_prev_loc:
+                    new_am[x, owner, -1] = 1
+
+            # 7.a If the condition is met, return the new state
+            if condition(new_am):
+                # 7.b If the condition is not met, quit the case analized from the possible transitions
+                # and try with another one.
+                pass
+            else:
+                t += 1
+                continue
+            self.logger.debug(
+                "Tx: object",
+                z=int(obj_rnd),
+                loc=current_loc,
+                owner=int(owner),
+                owner_next_loc=owner_prev_loc,
+                next_y=int(previous_parent_rnd),
+                next_y_loc=previous_parent_rnd_loc,
+                retry=t,
+            )
+            return new_am
+
+        return None
 
     def make_actor_transition(
         self,
@@ -513,9 +576,9 @@ class ObjectInLocationState(State):
 
             self.logger.debug(
                 "Tx: actor",
+                y=y,
                 x=current_x,
                 next_x=xs,
-                y=y,
                 z=zs,
             )
             return new_am
@@ -532,7 +595,7 @@ class ObjectInLocationState(State):
         # init necessary maps
         self.actor_locations_map = self.get_actor_locations()
         self.objects_map = self.get_objects_map()
-
+        new_am = None
         # Actor transition
         if axis == 1:
             act_txs = self.get_possibles_actor_transitions(location_to_locations_map)
@@ -573,4 +636,11 @@ class ObjectInLocationState(State):
                         raise ValueError("Impossible to make any transition, FATAL!")
         else:
             raise ValueError(f"Axis {axis} is not a valid axis to create a transition")
+
+        if new_am is None:
+            self.logger.error(
+                "Impossible to make any kind of transition, FATAL!", axis=axis
+            )
+            print(self.am.todense())
+            raise ValueError("Impossible to make any kind of transition, FATAL!")
         return new_am
