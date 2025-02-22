@@ -26,12 +26,11 @@ def generate_location_matrix(num_locations):
         all_combinations = list(
             itertools.chain.from_iterable(
                 itertools.combinations(range(num_locations), r)
-                for r in range(1, num_locations + 1)
-            )
-        )
+                for r in range(1, num_locations + 1)))
 
         # Create binary matrix using NumPy indexing
-        matrix = np.zeros((len(all_combinations), num_locations), dtype=np.bool)
+        matrix = np.zeros((len(all_combinations), num_locations),
+                          dtype=np.bool)
         for i, comb in enumerate(all_combinations):
             matrix[i, list(comb)] = 1
 
@@ -42,10 +41,10 @@ def generate_location_matrix(num_locations):
 
     # Unknown location with anti-locations
     anti_locations = generate_combinations_matrix(num_locations)
-    zeros_anti_locations = np.zeros(
-        (anti_locations.shape[0], num_locations), dtype=np.bool
-    )
-    anti_locations = np.concatenate((zeros_anti_locations, anti_locations), axis=1)
+    zeros_anti_locations = np.zeros((anti_locations.shape[0], num_locations),
+                                    dtype=np.bool)
+    anti_locations = np.concatenate((zeros_anti_locations, anti_locations),
+                                    axis=1)
     location_matrix = np.concatenate((known_locations, anti_locations), axis=0)
     return location_matrix
 
@@ -62,7 +61,8 @@ def generate_parent_combinations(x):
 
     def generate_combinations_recursive(index, current_x1, current_x2):
         if index == n:
-            if any(current_x1) and any(current_x2):  # Check for all-zero parents
+            if any(current_x1) and any(
+                    current_x2):  # Check for all-zero parents
                 combinations.append((current_x1[:], current_x2[:]))
             return
 
@@ -115,21 +115,21 @@ def filter_unique_parent_combinations(combinations, n, validate_func):
     for x1, x2 in combinations:
         if validate_func(x1, n) and validate_func(x2, n):
             # Ensure consistent ordering using lexicographical comparison
-            if tuple(x1) <= tuple(x2):  # Compare as tuples for lexicographical order
+            if tuple(x1) <= tuple(
+                    x2):  # Compare as tuples for lexicographical order
                 pair = (tuple(x1), tuple(x2))  # Use tuple for hashability
             else:
                 pair = (tuple(x2), tuple(x1))
 
             if pair not in seen_combinations:
                 unique_combinations.append(
-                    (list(x1), list(x2))
-                )  # Back to list for output
+                    (list(x1), list(x2)))  # Back to list for output
                 seen_combinations.add(pair)
 
     return unique_combinations
 
 
-def generate_OR_parents(x: np.array):
+def generate_OR_parents(x: np.array) -> list:
     n = len(x) // 2
     first_half, second_half = np.array(x[:n]), np.array(x[n:])
 
@@ -137,14 +137,12 @@ def generate_OR_parents(x: np.array):
     if not any(first_half):
         # Case where x is THE NOWHERE.
         if all(second_half):
-            return ([0] * n + [1] * n, [0] * n + [1] * n)
+            return [([0] * n + [1] * n, [0] * n + [1] * n)]
 
         assert np.sum(second_half) != n - 1, (
-            "the second half correspond to N-1 ones. Error!"
-        )
+            "the second half correspond to N-1 ones. Error!")
         solutions = filter_unique_parent_combinations(
-            generate_parent_combinations(x), n, is_valid_parent
-        )
+            generate_parent_combinations(x), n, is_valid_parent)
         nowhere_parent = ([0] * n + [1] * n, x.copy().astype(int).tolist())
         solutions.append(nowhere_parent)
         return solutions
@@ -155,11 +153,9 @@ def generate_OR_parents(x: np.array):
 
     sum_halfs = first_half + second_half
     assert np.array_equal(sum_halfs, np.array([1] * n)), (
-        "The result of first half + second half is NOT equal to all ones."
-    )
+        "The result of first half + second half is NOT equal to all ones.")
     solutions = filter_unique_parent_combinations(
-        generate_parent_combinations(x), n, is_valid_parent
-    )
+        generate_parent_combinations(x), n, is_valid_parent)
     # Create special case where child is combination of
     # the full nowhere parent and the child == x.
     # Add the nowhere_parent special case
@@ -170,7 +166,6 @@ def generate_OR_parents(x: np.array):
     x_copy = x.copy()
     x_copy[index_of_one] = 0
     additional = filter_unique_parent_combinations(
-        generate_parent_combinations(x_copy), n, is_valid_parent_antilocations
-    )
+        generate_parent_combinations(x_copy), n, is_valid_parent_antilocations)
 
     return solutions + additional

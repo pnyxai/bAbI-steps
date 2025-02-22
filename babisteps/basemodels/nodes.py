@@ -131,9 +131,8 @@ class ObjectInLocationStatePolar(State):
             new_am = deepcopy(self.am)
             filtered_am = filter(new_am) if filter else new_am
             # avoid "nobodys" (:-1), such actor can move, and translate object.
-            e = random.sample(
-                list(filtered_am[:, :-1, :].data.keys()), k=num_transitions
-            )
+            e = random.sample(list(filtered_am[:, :-1, :].data.keys()),
+                              k=num_transitions)
             for i_e in e:
                 x, y, _ = i_e  # Extract the current location (`x`) and actor (`y`)
                 # Get all object indices (`z`) the actor (`y`) has at location (`x`)
@@ -216,8 +215,12 @@ class ObjectInLocationStatePolar(State):
                 set_y = np.unique(np.append(set_y.T[0], [new_am.shape[1] - 1]))
                 set_y = set(set_y) - set([y])
                 if not set_y:
-                    e_converted = [int(item) for sublist in e for item in sublist]
-                    self.logger.debug("No valid transition", e=e_converted, set_y=set_y)
+                    e_converted = [
+                        int(item) for sublist in e for item in sublist
+                    ]
+                    self.logger.debug("No valid transition",
+                                      e=e_converted,
+                                      set_y=set_y)
                     valid_transition = False
                     break  # Break out of the for loop and continue the while loop
                 next_y = random.choice(list(set_y))
@@ -226,7 +229,9 @@ class ObjectInLocationStatePolar(State):
                 # clean the nothing objet, to avoid errors
                 new_am[x, next_y, -1] = 0
                 if new_am[x, y, :-1].to_coo().sum() == 0:
-                    self.logger.debug("Actor with 'nothing", x=int(x), y=int(y))
+                    self.logger.debug("Actor with 'nothing",
+                                      x=int(x),
+                                      y=int(y))
                     new_am[x, y, -1] = 1
 
             if not valid_transition:
@@ -258,21 +263,26 @@ class ObjectInLocationStatePolar(State):
         filter: Optional[Callable] = None,
     ) -> Union[SparseArray, None]:
         if axis == 1:
-            new_am = self.make_actor_transition(num_transitions, condition, filter)
+            new_am = self.make_actor_transition(num_transitions, condition,
+                                                filter)
             if new_am is None:
                 self.logger.debug(
                     "Fail make_actor_transition, now trying make_object_transition"
                 )
-                return self.make_object_transition(num_transitions, condition, filter)
+                return self.make_object_transition(num_transitions, condition,
+                                                   filter)
         elif axis == 2:
-            new_am = self.make_object_transition(num_transitions, condition, filter)
+            new_am = self.make_object_transition(num_transitions, condition,
+                                                 filter)
             if new_am is None:
                 self.logger.debug(
                     "Fail make_object_transition, now trying make_actor_transition"
                 )
-                return self.make_actor_transition(num_transitions, condition, filter)
+                return self.make_actor_transition(num_transitions, condition,
+                                                  filter)
         else:
-            raise ValueError(f"Axis {axis} is not a valid axis to create a transition")
+            raise ValueError(
+                f"Axis {axis} is not a valid axis to create a transition")
         return new_am
 
     def validate_next(self, new_am):
@@ -300,7 +310,7 @@ class ObjectInLocationState(State):
         2. Converts the sliced matrix into a boolean matrix (==1)
         3. Iterates through the sparse representation and collects unique locations
             for each actor.
-        4. Converts np.int64 values to plain Python integers in the resulting dictionary.
+        4. Converts np.int64 values to Python int in the resulting dict.
         """
         # Slice out the 'nobody' actor and create a boolean matrix
         all_actors = self.am[:, :-1, :] == 1
@@ -312,7 +322,10 @@ class ObjectInLocationState(State):
                 location_val = int(loc)
                 actor_locations.setdefault(actor_key, set()).add(location_val)
         # Convert each actor's set of locations to a sorted list (with python ints)
-        return {actor: sorted(list(locs)) for actor, locs in actor_locations.items()}
+        return {
+            actor: sorted(list(locs))
+            for actor, locs in actor_locations.items()
+        }
 
     def get_possibles_actor_transitions(self, location_to_locations_map):
         """
@@ -332,13 +345,9 @@ class ObjectInLocationState(State):
 
     def get_object_actor(self):
         """
-        Processes a sparse matrix/adjacency matrix (state) 'x' with dimensions:
-        The function:
-        1. Iterates through the sparse representation and collects actors that have an object
-        Particularly, the object [location,actor,-1] can be haved by many actors, the others.
-        2. Converts np.int64 values to plain Python integers in the resulting dictionary.
+        Processes a sparse matrix/adjacency matrix (state) 'x' with dimensions.
+        Iterates through the sparse representation and collects actors' object.
         """
-        # Slice out the 'nothing' object and create a boolean matrix
         all_items = self.am[:, :, :] == 1
         object_actor = {}
         for (loc, actor, obj), _ in all_items.data.items():
@@ -347,25 +356,30 @@ class ObjectInLocationState(State):
             obj_key = int(obj)
             object_actor.setdefault(actor_key, set()).add(obj_key)
         # Convert each actor's set of object to a sorted list (with python ints)
-        map = {actor: sorted(list(objs)) for actor, objs in object_actor.items()}
-        # validate that if any actor has more that one object, there is not a 'nothing' object (x.shape(2)-1)
+        map = {
+            actor: sorted(list(objs))
+            for actor, objs in object_actor.items()
+        }
+        # validate that if actors that has more that one object
+        # there is not a 'nothing' object.
         nothing_object = self.am.shape[2] - 1
         for actor, objs in map.items():
             if len(objs) > 1 and nothing_object in objs:
                 raise ValueError(
-                    f"Actor {actor} has more than one object and has the 'nothing' object"
+                    f"Actor {actor} has more than one object and has the 'nothing' object"  # noqa: E501
                 )
         return dict(sorted(map.items()))
 
     def get_objects_map(self):
         """
-        Funciton that return the actor-object and object-location dictionaries from a sparse matrix.
+        Return the actor-object and object-location dict given a sparse matrix.
 
         Args:
             x (sparse.DOK): Sparse matrix with the shape (locations, actors, objects)
         Returns:
-            actor_object (dict): Dictionary with the actor as key and a list of objects as value.
-            object_location (dict): Dictionary with the object as key and a list of locations owned by nobody.
+        A dict with the following key:values
+            actor_object (dict): Dictionary like {actor:list of objects}.
+            object_location (dict): Dictionary like {object: location} owned by nobody.
         """
         # Slice out the 'nothing' object and create a boolean matrix
         all_items = self.am[:, :-1, :] == 1
@@ -377,15 +391,11 @@ class ObjectInLocationState(State):
             actor_object.setdefault(actor_key, set()).add(obj_key)
         # Convert each actor's set of object to a sorted list (with python ints)
         actor_object = {
-            actor: sorted(list(objs)) for actor, objs in actor_object.items()
+            actor: sorted(list(objs))
+            for actor, objs in actor_object.items()
         }
         actor_object = dict(sorted(actor_object.items()))
-        # validate that if any actor has more that one object, there is not a 'nothing' object (x.shape(2)-1)
-        # nothing_object = x.shape[2] - 1
-        # for actor, objs in map.items():
-        #     if len(objs) > 1 and nothing_object in objs:
-        #         raise ValueError(f"Actor {actor} has more than one object and has the 'nothing' object")
-        # Particularly, for objects in nobody ( x[:,-1, :] == 1), instead of return the actor-objects, return the location-object
+
         nobody_objects = self.am[:, -1, :] == 1
         object_location = {}
         for (loc, obj), _ in nobody_objects.data.items():
@@ -408,21 +418,19 @@ class ObjectInLocationState(State):
             filtered_am = self.am[:, :, z] == 1
             x_y = list(filtered_am.data.keys())[0]
             y = int(x_y[1])
-            current_location = list(
-                self.actor_locations_map[y]
-                if y in self.actor_locations_map
-                else self.objects_map["object_location"][z]
-            )
+            current_location = list(self.actor_locations_map[y] if y in
+                                    self.actor_locations_map else self.
+                                    objects_map["object_location"][z])
             set_y = [
-                actor
-                for actor, location in self.actor_locations_map.items()
+                actor for actor, location in self.actor_locations_map.items()
                 if location == current_location
             ]
             # if set_y is empty, then this mean that there is none actor in location of
             # the z object (who has the object is nobody!)
             if not set_y:
                 continue
-            # now, given the set_y, this means that there is at least one actor (that at minimum is the one who has the object)
+            # now, given the set_y, this means that there is at least one actor
+            # (that at minimum is the one who has the object)
             # so, lets add the nobody actor to the set_y
             set_y.append(n_a)
             # and remove current owner of the object
@@ -443,9 +451,10 @@ class ObjectInLocationState(State):
         obj_txs: dict,
         num_transitions: int,
         condition: Callable,
+        location_to_locations_map,
         filter: Optional[Callable] = None,
         limit=50,
-    ) -> Union[SparseArray, None]:
+    ) -> Union[State, None]:
         """
         Creates a delta of object-actor pairs based on specified conditions.
         Args:
@@ -466,51 +475,72 @@ class ObjectInLocationState(State):
             # 2. Pick a random actor to give that object to
             # from obj_txs_tmp[obj_rnd]["from_possible_parents"]
             previous_parent_rnd = random.choice(
-                obj_txs_tmp[obj_rnd]["from_possible_parents"]
-            )
+                obj_txs_tmp[obj_rnd]["from_possible_parents"])
             current_loc = obj_txs_tmp[obj_rnd]["current_location"]
             owner = obj_txs_tmp[obj_rnd]["owner"]
-            # 3. Pick a random possible_parents_locations and random choice betwen x1, x2
-            # from obj_txs_tmp[obj_rnd]["possible_parents_locations"]
+            # 3. Pick a random possible_parents_locations pairs
             possible_parents_locations = random.choice(
-                obj_txs_tmp[obj_rnd]["possible_parents_locations"]
-            )
+                obj_txs_tmp[obj_rnd]["possible_parents_locations"])
             # Assing x1,x2 OR to owner/previous_parent_rnd
             c = random.getrandbits(1)
             owner_prev_loc = np.array(possible_parents_locations[c])
             owner_prev_loc = np.where(owner_prev_loc == 1)[0].tolist()
-            previous_parent_rnd_loc = np.array(possible_parents_locations[1 - c])
-            previous_parent_rnd_loc = np.where(previous_parent_rnd_loc == 1)[0].tolist()
+            previous_parent_rnd_loc = np.array(possible_parents_locations[1 -
+                                                                          c])
+            previous_parent_rnd_loc = np.where(
+                previous_parent_rnd_loc == 1)[0].tolist()
             # 4.a Remove obj_rnd from the current actor
             new_am[:, owner, obj_rnd] = 0
-            # 5. Move all the objects that the actor has from in current_loc
-            # to the previous_parent_rnd_loc
+            # 5. Adjust objects position for both owner and previous_parent_rnd
+            # this is done only for the object that is not the object to be moved
+            # and for actors that are not `nobody``.
             for z in obj_txs:
-                if obj_txs[z]["owner"] == previous_parent_rnd:
-                    for x in current_loc:
-                        new_am[x, previous_parent_rnd, z] = 0
-                    for x in previous_parent_rnd_loc:
-                        new_am[x, previous_parent_rnd, z] = 1
-            # 5. Give the object to the new actor
+                if z != obj_rnd:
+                    if (obj_txs[z]["owner"] == previous_parent_rnd
+                            and previous_parent_rnd != nb):
+                        for x in current_loc:
+                            new_am[x, previous_parent_rnd, z] = 0
+                        for x in previous_parent_rnd_loc:
+                            new_am[x, previous_parent_rnd, z] = 1
+                    if obj_txs[z]["owner"] == owner and owner != nb:
+                        for x in current_loc:
+                            new_am[x, owner, z] = 0
+                        for x in owner_prev_loc:
+                            new_am[x, owner, z] = 1
+            # 5. Place the object to the new actor
             for x in previous_parent_rnd_loc:
                 new_am[x, previous_parent_rnd, obj_rnd] = 1
 
-            # 6. Now, clean the `nothing` from previous_parent_rnd (now it has an object!)
+            # 6. Now, clean the `nothing` from previous_parent_rnd
+            # (now it has an object!)
             new_am[:, previous_parent_rnd, -1] = 0
-            # 5. If the owner the has no objects, give them the 'nothing' object, except
+            # 7. If the owner has no objects, give them the 'nothing' object, except
             # if the owner is the nobody actor
             if new_am[:, owner, :-1].to_coo().sum() == 0 and owner != nb:
                 # log that the owner has nothing
-                self.logger.debug(
-                    "Actor with 'nothing'", owner=owner, owner_prev_loc=owner_prev_loc
-                )
+                self.logger.debug("Actor with 'nothing'",
+                                  owner=owner,
+                                  owner_prev_loc=owner_prev_loc)
                 for x in owner_prev_loc:
                     new_am[x, owner, -1] = 1
 
             # 7.a If the condition is met, return the new state
             if condition(new_am):
-                # 7.b If the condition is not met, quit the case analized from the possible transitions
-                # and try with another one.
+                new_state = ObjectInLocationState(
+                    am=new_am,
+                    index=self.index - 1,
+                    verbosity=self.verbosity,
+                    log_file=self.log_file,
+                )
+                # init necessary maps
+                new_state.actor_locations_map = new_state.get_actor_locations()
+                new_state.objects_map = new_state.get_objects_map()
+                future_act_txs = new_state.get_possibles_actor_transitions(
+                    location_to_locations_map)
+                future_obj_txs = new_state.get_possible_objects_transitions()
+                if len(future_act_txs) == 0 and len(future_obj_txs) == 0:
+                    self.logger.warning("No possible transitions, retrying")
+                    continue
                 pass
             else:
                 t += 1
@@ -525,7 +555,7 @@ class ObjectInLocationState(State):
                 next_y_loc=previous_parent_rnd_loc,
                 retry=t,
             )
-            return new_am
+            return new_state
 
         return None
 
@@ -534,6 +564,7 @@ class ObjectInLocationState(State):
         act_txs: dict,
         num_transitions: int,
         condition: Callable,
+        location_to_locations_map,
         filter: Optional[Callable] = None,
         limit=50,
     ) -> Union[SparseArray, None]:
@@ -561,6 +592,21 @@ class ObjectInLocationState(State):
                     for x in xs:
                         new_am[x, y, z] = 1
             if condition(new_am):
+                new_state = ObjectInLocationState(
+                    am=new_am,
+                    index=self.index - 1,
+                    verbosity=self.verbosity,
+                    log_file=self.log_file,
+                )
+                # init necessary maps
+                new_state.actor_locations_map = new_state.get_actor_locations()
+                new_state.objects_map = new_state.get_objects_map()
+                future_act_txs = new_state.get_possibles_actor_transitions(
+                    location_to_locations_map)
+                future_obj_txs = new_state.get_possible_objects_transitions()
+                if len(future_act_txs) == 0 and len(future_obj_txs) == 0:
+                    self.logger.info("No possible transitions, retrying")
+                    continue
                 pass
             else:
                 # remove the tx from act_txs_tmp
@@ -581,7 +627,7 @@ class ObjectInLocationState(State):
                 next_x=xs,
                 z=zs,
             )
-            return new_am
+            return new_state
         return None
 
     def create_transition(
@@ -591,56 +637,72 @@ class ObjectInLocationState(State):
         condition: Callable,
         axis: int,
         filter: Optional[Callable] = None,
-    ) -> Union[SparseArray, None]:
+    ) -> Union[State, None]:
         # init necessary maps
-        self.actor_locations_map = self.get_actor_locations()
-        self.objects_map = self.get_objects_map()
-        new_am = None
+        new_state = None
         # Actor transition
         if axis == 1:
-            act_txs = self.get_possibles_actor_transitions(location_to_locations_map)
+            act_txs = self.get_possibles_actor_transitions(
+                location_to_locations_map)
             if act_txs:
-                new_am = self.make_actor_transition(
-                    act_txs, num_transitions, condition, filter
+                new_state = self.make_actor_transition(
+                    act_txs,
+                    num_transitions,
+                    condition,
+                    location_to_locations_map,
+                    filter,
                 )
-                if new_am is None:
+                if new_state is None:
                     self.logger.debug(
                         "Fail make_actor_transition, now trying make_object_transition"
                     )
                     obj_txs = self.get_possible_objects_transitions()
                     if obj_txs:
-                        new_am = self.make_object_transition(
-                            obj_txs, num_transitions, condition, filter
+                        new_state = self.make_object_transition(
+                            obj_txs,
+                            num_transitions,
+                            condition,
+                            location_to_locations_map,
+                            filter,
                         )
                     else:
-                        raise ValueError("Impossible to make any transition, FATAL!")
+                        raise ValueError(
+                            "Impossible to make any transition, FATAL!")
         # Object transition
         elif axis == 2:
             obj_txs = self.get_possible_objects_transitions()
             if obj_txs:
-                new_am = self.make_object_transition(
-                    obj_txs, num_transitions, condition, filter
+                new_state = self.make_object_transition(
+                    obj_txs,
+                    num_transitions,
+                    condition,
+                    location_to_locations_map,
+                    filter,
                 )
-                if new_am is None:
+                if new_state is None:
                     self.logger.debug(
                         "Fail make_object_transition, now trying make_actor_transition"
                     )
                     act_txs = self.get_possibles_actor_transitions(
-                        location_to_locations_map
-                    )
+                        location_to_locations_map)
                     if act_txs:
-                        new_am = self.make_actor_transition(
-                            act_txs, num_transitions, condition, filter
+                        new_state = self.make_actor_transition(
+                            act_txs,
+                            num_transitions,
+                            condition,
+                            location_to_locations_map,
+                            filter,
                         )
                     else:
-                        raise ValueError("Impossible to make any transition, FATAL!")
+                        raise ValueError(
+                            "Impossible to make any transition, FATAL!")
         else:
-            raise ValueError(f"Axis {axis} is not a valid axis to create a transition")
+            raise ValueError(
+                f"Axis {axis} is not a valid axis to create a transition")
 
-        if new_am is None:
+        if new_state is None:
             self.logger.error(
-                "Impossible to make any kind of transition, FATAL!", axis=axis
-            )
-            print(self.am.todense())
-            raise ValueError("Impossible to make any kind of transition, FATAL!")
-        return new_am
+                "Impossible to make any kind of transition, FATAL!", axis=axis)
+            raise ValueError(
+                "Impossible to make any kind of transition, FATAL!")
+        return new_state

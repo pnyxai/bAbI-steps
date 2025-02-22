@@ -1,4 +1,3 @@
-import itertools
 import logging
 import random
 from pathlib import Path
@@ -9,14 +8,10 @@ from pydantic import BaseModel, Field, model_validator
 from sparse._dok import DOK
 
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, To
-from babisteps.basemodels.nodes import (
-    Coordenate,
-    Entity,
-    EntityInCoordenateState,
-    ObjectInLocationState,
-    ObjectInLocationStatePolar,
-    State,
-)
+from babisteps.basemodels.nodes import (Coordenate, Entity,
+                                        EntityInCoordenateState,
+                                        ObjectInLocationState,
+                                        ObjectInLocationStatePolar, State)
 from babisteps.utils import logger, operators
 
 # -------------------------
@@ -204,9 +199,9 @@ class SimpleTracker(BaseModel):
     @model_validator(mode="after")
     def fill_logger(self):
         if not self.logger:
-            self.logger = logger.get_logger(
-                "SimpleTracker", level=self.verbosity, log_file=self.log_file
-            )
+            self.logger = logger.get_logger("SimpleTracker",
+                                            level=self.verbosity,
+                                            log_file=self.log_file)
         return self
 
     @model_validator(mode="after")
@@ -215,8 +210,7 @@ class SimpleTracker(BaseModel):
         if len(model_tuple) != len(self.shape_str):
             raise ValueError(
                 f"Length mismatch: 'model.as_tuple()' has length {len(model_tuple)} "
-                f"but 'shape_str' has length {len(self.shape_str)}."
-            )
+                f"but 'shape_str' has length {len(self.shape_str)}.")
         return self
 
     def load_ontology_from_topic(self) -> Callable:
@@ -244,8 +238,7 @@ class SimpleTracker(BaseModel):
         if answer_type not in loader_mapping:
             raise ValueError(
                 f"Unsupported answer type: {answer_type.__name__}. "
-                f"Should be one of {[cls.__name__ for cls in loader_mapping]}"
-            )
+                f"Should be one of {[cls.__name__ for cls in loader_mapping]}")
         # Set the uncertainty based on the answer type
         if uncertainty_mapping[answer_type]:
             self.uncertainty = uncertainty_mapping[answer_type]
@@ -298,7 +291,8 @@ class SimpleTracker(BaseModel):
                 states[i] = self.initialize_state(i, condition)
                 for j in list(reversed(range(i))):
                     condition = lambda x: True
-                    states[j] = self.create_new_state(j, states[j + 1], condition)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition)
             else:
                 # case where e is in uncertinty, but previously was in c.
                 i = random.randint(0, self.states_qty - 2)
@@ -306,11 +300,13 @@ class SimpleTracker(BaseModel):
                 states[i] = self.initialize_state(i, condition)
                 for j in list(reversed(range(i))):
                     condition = lambda x: True
-                    states[j] = self.create_new_state(j, states[j + 1], condition)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition)
                 # create the states after i
                 for j in range(i + 1, len(states)):
                     condition = lambda x: x[-1, 0] == 1
-                    states[j] = self.create_new_state(j, states[j - 1], condition)
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      condition)
 
         elif self.topic.answer == "unknown":
             if random.choice([0, 1]):
@@ -319,20 +315,24 @@ class SimpleTracker(BaseModel):
                 states[i] = self.initialize_state(i, condition)
                 for j in range(1, self.states_qty):
                     condition = lambda x: x[-1, 0] == 1
-                    states[j] = self.create_new_state(j, states[j - 1], condition)
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      condition)
             else:
                 i = random.randint(0, self.states_qty - 2)
                 condition = lambda x: x[0, 0] == 0 and x[-1, 0] == 0
                 states[i] = self.initialize_state(i, condition)
                 for j in list(reversed(range(i))):
                     condition = lambda x: True
-                    states[j] = self.create_new_state(j, states[j + 1], condition)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition)
                 # create the states after i
                 for j in range(i + 1, len(states)):
                     condition = lambda x: x[-1, 0] == 1
-                    states[j] = self.create_new_state(j, states[j - 1], condition)
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      condition)
         else:
-            raise ValueError("Invalid answer value, should be 'yes', 'no' or 'unknown'")
+            raise ValueError(
+                "Invalid answer value, should be 'yes', 'no' or 'unknown'")
 
         self.logger.info(
             "_actor_in_location_polar successfully created",
@@ -367,12 +367,15 @@ class SimpleTracker(BaseModel):
                 states[j] = self.create_new_state(j, states[j + 1], condition)
 
         elif self.topic.answer == "none":
-            self.logger.debug("Creating _actor_in_location_who with answer none")
+            self.logger.debug(
+                "Creating _actor_in_location_who with answer none")
             i = self.states_qty - 1
-            condition = lambda x: sum(x[0, :]) == 0 and sum(x[-1, :]) < self.states_qty
+            condition = lambda x: sum(x[0, :]) == 0 and sum(x[-1, :]
+                                                            ) < self.states_qty
             states[i] = self.initialize_state(i, condition)
 
-            EIU = states[i].get_entities_in_coodenate(self.c2idx[self.uncertainty])
+            EIU = states[i].get_entities_in_coodenate(
+                self.c2idx[self.uncertainty])
 
             if EIU:
                 self.logger.debug(
@@ -381,8 +384,7 @@ class SimpleTracker(BaseModel):
                 )
                 while EIU:
                     EIU = states[i].get_entities_in_coodenate(
-                        self.c2idx[self.uncertainty]
-                    )
+                        self.c2idx[self.uncertainty])
                     for j in list(reversed(range(i))):
                         ue = random.choice(self.model.entities)
                         x_ue = self.e2idx[ue]
@@ -396,15 +398,16 @@ class SimpleTracker(BaseModel):
                             condition = lambda x, x_ue=x_ue: x[0, x_ue] == 1
                             EIU.remove(x_ue)
                         else:
-                            condition = lambda x, EIU=EIU: all(
-                                x[-1, EIU].todense() == [1] * len(EIU)
-                            )
-                        states[j] = self.create_new_state(j, states[j + 1], condition)
+                            condition = lambda x, EIU=EIU: all(x[
+                                -1, EIU].todense() == [1] * len(EIU))
+                        states[j] = self.create_new_state(
+                            j, states[j + 1], condition)
             else:
                 self.logger.debug("There were not entities in uncertainty")
                 for j in list(reversed(range(i))):
                     condition = lambda x: True
-                    states[j] = self.create_new_state(j, states[j + 1], condition)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition)
 
         elif self.topic.answer == "unknown":
             i = self.states_qty - 1
@@ -413,17 +416,18 @@ class SimpleTracker(BaseModel):
 
             condition = lambda x: empty_l(x) and some_in_UN(x)
             states[i] = self.initialize_state(i, condition)
-            EIU = states[i].get_entities_in_coodenate(self.c2idx[self.uncertainty])
+            EIU = states[i].get_entities_in_coodenate(
+                self.c2idx[self.uncertainty])
             for j in list(reversed(range(i))):
                 ue = random.choice(self.model.entities)
                 x_ue = self.e2idx[ue]
                 if x_ue in EIU:
-                    condition = (
-                        lambda x, x_ue=x_ue: x[0, x_ue] == 0 and x[-1, x_ue] == 0
-                    )
+                    condition = (lambda x, x_ue=x_ue: x[0, x_ue] == 0 and x[
+                        -1, x_ue] == 0)
                     EIU.remove(x_ue)
                 else:
-                    condition = lambda x: all(x[-1, EIU].todense() == [1] * len(EIU))
+                    condition = lambda x: all(x[-1, EIU].todense() == [1] *
+                                              len(EIU))
                 states[j] = self.create_new_state(j, states[j + 1], condition)
         else:
             raise ValueError("Invalid answer value")
@@ -494,7 +498,8 @@ class SimpleTracker(BaseModel):
         elif self.topic.answer == "no":
             condition = lambda x: x[0, 0] == 0 and x[-1, 0] == 0
         else:
-            raise ValueError("Invalid answer value, should be 1 (YES) or 0 (NO)")
+            raise ValueError(
+                "Invalid answer value, should be 1 (YES) or 0 (NO)")
 
         states[i] = self.initialize_state(i, condition)
         for j in list(reversed(range(i))):
@@ -557,8 +562,7 @@ class SimpleTracker(BaseModel):
             condition = lambda x: x[-1, 0] == 1
         else:
             raise ValueError(
-                "Invalid answer value, should be 'designated_actor' or 'none'"
-            )
+                "Invalid answer value, should be 'designated_actor' or 'none'")
 
         states[i] = self.initialize_state(i, condition)
         for j in list(reversed(range(i))):
@@ -610,12 +614,14 @@ class SimpleTracker(BaseModel):
             self.num_transitions,
             condition,
         )
-        new_state = EntityInCoordenateState(
-            am=new_am, index=j, verbosity=self.verbosity, log_file=self.log_file
-        )
+        new_state = EntityInCoordenateState(am=new_am,
+                                            index=j,
+                                            verbosity=self.verbosity,
+                                            log_file=self.log_file)
         return new_state
 
-    def initialize_state(self, i: int, condition: Callable) -> EntityInCoordenateState:
+    def initialize_state(self, i: int,
+                         condition: Callable) -> EntityInCoordenateState:
         """
         Initializes the state for an entity in a location based on a given condition.
         Args:
@@ -635,7 +641,10 @@ class SimpleTracker(BaseModel):
             s = self.create_random_state(i)
             t += 1
 
-        self.logger.debug("State initialized", state=s, answer=self.topic.answer, i=i)
+        self.logger.debug("State initialized",
+                          state=s,
+                          answer=self.topic.answer,
+                          i=i)
         return s
 
     def create_random_state(self, i: int) -> EntityInCoordenateState:
@@ -649,14 +658,17 @@ class SimpleTracker(BaseModel):
         """
 
         entities = np.arange(self.shape[1])
-        coordenates = np.random.choice(self.shape[0], self.shape[1], replace=True)
+        coordenates = np.random.choice(self.shape[0],
+                                       self.shape[1],
+                                       replace=True)
         sparse_matrix = DOK(shape=self.shape, dtype=int, fill_value=0)
         entity_coord_pairs = list(zip(coordenates, entities))
         for x, y in entity_coord_pairs:
             sparse_matrix[x, y] = 1
-        s = EntityInCoordenateState(
-            am=sparse_matrix, index=i, verbosity=self.verbosity, log_file=self.log_file
-        )
+        s = EntityInCoordenateState(am=sparse_matrix,
+                                    index=i,
+                                    verbosity=self.verbosity,
+                                    log_file=self.log_file)
         return s
 
     def create_transitions(self):
@@ -672,7 +684,7 @@ class SimpleTracker(BaseModel):
             deltas_i = []
             for j in range(0, len(diff.data), 2):
                 # get by pairs
-                pair = diff.data[j : j + 2]
+                pair = diff.data[j:j + 2]
                 if pair[0] == -1:
                     o = j
                     e = j + 1
@@ -698,9 +710,9 @@ class SimpleTracker(BaseModel):
     #         d = np.array([e,o])
     # TODO
     def create_fol(self):
-        def enumerate_model(
-            element: Union[list[Entity], list[Coordenate]], shape_type: str
-        ) -> list[list]:
+
+        def enumerate_model(element: Union[list[Entity], list[Coordenate]],
+                            shape_type: str) -> list[list]:
             enumeration = []
             for e in element:
                 if e != self.uncertainty:
@@ -714,8 +726,7 @@ class SimpleTracker(BaseModel):
                 e, c = self.idx2e[y], self.idx2c[x]
                 if c != self.uncertainty:
                     state_sentences.append(
-                        In(entity=e, coordenate=c, shape_str=self.shape_str)
-                    )
+                        In(entity=e, coordenate=c, shape_str=self.shape_str))
             return state_sentences
 
         def describe_transitions(state: State) -> list[list]:
@@ -735,34 +746,29 @@ class SimpleTracker(BaseModel):
                             entity=entity,
                             coordenate=next_coord,
                             shape_str=self.shape_str,
-                        )
-                    )
+                        ))
                 elif next_coord == self.uncertainty:
                     transition_sentences.append(
                         From(
                             entity=entity,
                             coordenate=prev_coord,
                             shape_str=self.shape_str,
-                        )
-                    )
+                        ))
                 else:
                     transition_sentences.append(
-                        random.choice(
-                            [
-                                To(
-                                    entity=entity,
-                                    coordenate=next_coord,
-                                    shape_str=self.shape_str,
-                                ),
-                                FromTo(
-                                    entity=entity,
-                                    coordenate1=prev_coord,
-                                    coordenate2=next_coord,
-                                    shape_str=self.shape_str,
-                                ),
-                            ]
-                        )
-                    )
+                        random.choice([
+                            To(
+                                entity=entity,
+                                coordenate=next_coord,
+                                shape_str=self.shape_str,
+                            ),
+                            FromTo(
+                                entity=entity,
+                                coordenate1=prev_coord,
+                                coordenate2=next_coord,
+                                shape_str=self.shape_str,
+                            ),
+                        ]))
             return transition_sentences
 
         world_enumerate = []
@@ -920,15 +926,17 @@ class ComplexTracking(BaseModel):
         if len(model_tuple) != len(self.shape_str):
             raise ValueError(
                 f"Length mismatch: 'model.as_tuple()' has length {len(model_tuple)} "
-                f"but 'shape_str' has length {len(self.shape_str)}."
-            )
+                f"but 'shape_str' has length {len(self.shape_str)}.")
         return self
 
     @model_validator(mode="after")
     def fill_p_object_in_actor(self):
         # If not defined, p_object_in_actor is set to 1/len(dim2)+1 (to consider nobody)
         if not self.p_object_in_actor:
-            self.p_object_in_actor = 1 / (len(self.model.dim1) + 1)
+            self.p_object_in_actor = 1 - (1 / (len(self.model.dim1) + 1))
+
+        self.logger.info("Setting p_object_in_actor",
+                         p_object_in_actor=self.p_object_in_actor)
         return self
 
     def load_ontology_from_topic(self) -> Callable:
@@ -965,8 +973,7 @@ class ComplexTracking(BaseModel):
         if answer_type not in loader_mapping:
             raise ValueError(
                 f"Unsupported answer type: {answer_type.__name__}. "
-                f"Should be one of {[cls.__name__ for cls in loader_mapping]}"
-            )
+                f"Should be one of {[cls.__name__ for cls in loader_mapping]}")
         # Set the uncertainty based on the answer type
         if uncertainty_mapping[answer_type]:
             self.uncertainty = uncertainty_mapping[answer_type]
@@ -976,7 +983,8 @@ class ComplexTracking(BaseModel):
         return loader_mapping[answer_type]
 
     def _create_aux(self):
-        self.shape = (len(self.model.dim0), len(self.model.dim1), len(self.model.dim2))
+        self.shape = (len(self.model.dim0), len(self.model.dim1),
+                      len(self.model.dim2))
         self.dim0_obj_to_idx = {o: i for i, o in enumerate(self.model.dim0)}
         self.dim1_obj_to_idx = {o: i for i, o in enumerate(self.model.dim1)}
         self.dim2_obj_to_idx = {o: i for i, o in enumerate(self.model.dim2)}
@@ -1013,7 +1021,10 @@ class ComplexTracking(BaseModel):
             s = self.create_random_state(i)
             t += 1
 
-        s.logger.info("State initialized", state=s, answer=self.topic.answer, i=i)
+        s.logger.info("State initialized",
+                      state=s,
+                      answer=self.topic.answer,
+                      i=i)
         return s
 
     def create_random_state(self, i: int) -> State:
@@ -1035,15 +1046,16 @@ class ComplexTracking(BaseModel):
             actors,  # include the nobody actor
         )
         unique_actors = np.unique(actor_choices)
-        location_choices = np.random.choice(
-            self.shape[0], len(unique_actors), replace=True
-        )
+        location_choices = np.random.choice(self.shape[0],
+                                            len(unique_actors),
+                                            replace=True)
         # Create a mapping of actor -> location to ensure one location per actor
         actor_to_location = dict(zip(unique_actors, location_choices))
 
         sparse_matrix = DOK(shape=self.shape, dtype=np.int8, fill_value=0)
         for obj, actor in zip(objects, actor_choices):
-            loc = actor_to_location[actor]  # Ensure the actor gets a unique location
+            loc = actor_to_location[
+                actor]  # Ensure the actor gets a unique location
             sparse_matrix[loc, actor, obj] = 1
 
         # Step 4: Add the objects in nobody to some location
@@ -1053,20 +1065,23 @@ class ComplexTracking(BaseModel):
                 sparse_matrix[loc, -1, obj] = 1
 
         # Get actors with nothing
-        AWN = np.where(
-            (sparse_matrix[:, :, :-1] == 0).to_coo().sum(axis=(0, 2)).todense()
-            == sparse_matrix.shape[0] * (sparse_matrix.shape[2] - 1)
-        )[0]
-        AWN = np.delete(AWN, np.where(AWN == sparse_matrix.shape[1] - 1))
+        AWN = np.where((sparse_matrix[:, :, :-1] == 0).to_coo().sum(
+            axis=(0, 2)).todense() == sparse_matrix.shape[0] *
+                       (sparse_matrix.shape[2] - 1))[0]
+        AWN = np.delete(
+            AWN,
+            np.where(AWN == sparse_matrix.shape[1] -  # noqa: SIM300
+                     1))
         # no for each actor with nothing, pick a random place, and give then the
         # `nothing`(-1) object
         if AWN.size:
             for a in AWN:
                 loc = np.random.choice(sparse_matrix.shape[0])
                 sparse_matrix[loc, a, -1] = 1
-        s = self.state_class(
-            am=sparse_matrix, index=i, verbosity=self.verbosity, log_file=self.log_file
-        )
+        s = self.state_class(am=sparse_matrix,
+                             index=i,
+                             verbosity=self.verbosity,
+                             log_file=self.log_file)
         return s
 
     def _object_in_location_polar(self):
@@ -1098,18 +1113,21 @@ class ComplexTracking(BaseModel):
                 condition = lambda x: True
                 # chose between move and object, or move an anctor
                 axis = 2 if self.choice() else 1
-                states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+                states[j] = self.create_new_state(j, states[j + 1], condition,
+                                                  axis)
 
         elif self.topic.answer == "no":
             if random.choice([0, 1]):
                 # case for d2 not in d1
                 i = self.states_qty - 1
-                condition = lambda x: sum(x[0, :, 0]) == 0 and sum(x[-1, :, 0]) == 0
+                condition = lambda x: sum(x[0, :, 0]) == 0 and sum(x[-1, :, 0]
+                                                                   ) == 0
                 states[i] = self.initialize_state(i, condition)
                 for j in list(reversed(range(i))):
                     condition = lambda x: True
                     axis = 2 if self.choice() else 1
-                    states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition, axis)
             else:
                 # case where d2 is in d0 = uncertinty, but previously was in d0.
                 i = random.randint(0, self.states_qty - 2)
@@ -1120,42 +1138,44 @@ class ComplexTracking(BaseModel):
                     condition = lambda x: True
                     # chose between move and object, or move an anctor
                     axis = 2 if self.choice() else 1
-                    states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition, axis)
                 # Forward
                 # This mean, that the d2 remains in d0=uncertainty
                 for j in range(i + 1, len(states)):
                     condition = lambda x: sum(x[-1, :, 0]) == 1
                     axis = 2 if self.choice() else 1
-                    states[j] = self.create_new_state(j, states[j - 1], condition, axis)
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      condition, axis)
 
         elif self.topic.answer == "unknown":
             if random.choice([0, 1]):
                 # case where d3 always remain in nowhere (d3=-1)
                 i = 0
                 condition = lambda x: sum(x[-1, :, 0]) == 1
-                self.logger.debug(
-                    "Creating polar unknown, with 0", answer=self.topic.answer, i=i
-                )
+                self.logger.debug("Creating polar unknown, with 0",
+                                  answer=self.topic.answer,
+                                  i=i)
                 states[i] = self.initialize_state(i, condition)
                 for j in range(1, self.states_qty):
                     # remain always in nowhere
                     condition = lambda x: sum(x[-1, :, 0]) == 1
                     # chose between move and object, or move an actor
                     axis = 2 if self.choice() else 1
-                    states[j] = self.create_new_state(j, states[j - 1], condition, axis)
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      condition, axis)
             else:
                 # case where d3 was not in d1, and neither in nowhere in certain point.
                 # (this mean it was in some dim1 != d1)
                 # and it can't be in nobody.
                 i = random.randint(0, self.states_qty - 2)
-                self.logger.debug(
-                    "Creating polar unknown, with 0", answer=self.topic.answer, i=i
-                )
+                self.logger.debug("Creating polar unknown, with 0",
+                                  answer=self.topic.answer,
+                                  i=i)
                 #
                 condition = (
-                    lambda x: sum(x[0, :, 0]) == 0
-                    and sum(x[-1, :, 0]) == 0
-                    and x[:, :-1, 0].to_coo().sum() == 1
+                    lambda x: sum(x[0, :, 0]) == 0 and sum(x[
+                        -1, :, 0]) == 0 and x[:, :-1, 0].to_coo().sum() == 1
                 )  # This is an extra, so someone has to be in the same place
                 states[i] = self.initialize_state(i, condition)
                 self.logger.debug("Begin of backward")
@@ -1164,10 +1184,10 @@ class ComplexTracking(BaseModel):
                     # define a `filter` lambda function
                     condition = lambda x: True
                     axis = 2 if self.choice() else 1
-                    states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition, axis)
                 # create the states after i, that where d2 remains in nowhere (d0==-1)
                 self.logger.debug("Begin of forward")
-                print("len(states)", len(states))
                 for j in range(i + 1, len(states)):
                     condition = lambda x: sum(x[-1, :, 0]) == 1
                     # This sould force to pick the desired object to move
@@ -1177,15 +1197,15 @@ class ComplexTracking(BaseModel):
                     else:
                         filter = None
                     axis = 2 if self.choice() else 1
-                    states[j] = self.create_new_state(
-                        j, states[j - 1], condition, axis, filter
-                    )
+                    states[j] = self.create_new_state(j, states[j - 1],
+                                                      condition, axis, filter)
         else:
             raise ValueError("Invalid answer value, should be 'yes' no 'no'")
 
         return states
 
-    def initialize_state_with_antilocations(self, i: int, condition: Callable) -> State:
+    def initialize_state_with_antilocations(self, i: int,
+                                            condition: Callable) -> State:
         """
         Initializes the state for an entity in a location based on a given condition.
         Args:
@@ -1208,7 +1228,12 @@ class ComplexTracking(BaseModel):
             s = self.create_random_state_with_antilocations(i)
             t += 1
 
-        s.logger.info("State initialized", state=s, answer=self.topic.answer, i=i)
+        s.actor_locations_map = s.get_actor_locations()
+        s.objects_map = s.get_objects_map()
+        s.logger.info("State initialized",
+                      state=s,
+                      answer=self.topic.answer,
+                      i=i)
         return s
 
     def choice_known_location(self):
@@ -1240,7 +1265,8 @@ class ComplexTracking(BaseModel):
         It has to limit the possible locations for the objects and actors.
         Args:
             objects (np.array): list of object asigned to actors.
-            actor_choices (np.array): list of actors that have an assigned object. object[i] is in actor[i]
+            actor_choices (np.array): list of actors that have an assigned object.
+            object[i] is in actor[i]
             objects_nobody (np.array): list of object owned by nobody.
         """
         num_locations = self.shape[0] // 2
@@ -1266,35 +1292,29 @@ class ComplexTracking(BaseModel):
                             realloc_objects,
                             realloc_actor_choices,
                             realloc_objects_nobody,
-                        ) = self.assign_objects(objs_to_re_alloc, realloc_actr_indexes)
+                        ) = self.assign_objects(objs_to_re_alloc,
+                                                realloc_actr_indexes)
                         objects = np.delete(objects, objs_to_re_alloc)
-                        actor_choices = np.delete(actor_choices, objs_to_re_alloc)
+                        actor_choices = np.delete(actor_choices,
+                                                  objs_to_re_alloc)
                         # update the objects, actor_choices and objects_nobody
                         objects = np.concatenate([objects, realloc_objects])
                         actor_choices = np.concatenate(
-                            [actor_choices, realloc_actor_choices]
-                        )
+                            [actor_choices, realloc_actor_choices])
                         objects_nobody = np.concatenate(
-                            [objects_nobody, realloc_objects_nobody]
-                        )
+                            [objects_nobody, realloc_objects_nobody])
                     ####################
                     # END OBJECT REASSIGNMENT
                     ####################
 
                 for a_i in np.unique(actor_choices):
-                    i_l = (
-                        0
-                        if actor == a_i
-                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
-                    )
+                    i_l = (0 if actor == a_i else self.get_random_location(
+                        min_loc_matrix, max_loc_matrix))
                     actor_in_location_fixed[a_i] = i_l
 
                 for obj in objects_nobody:
-                    i_l = (
-                        0
-                        if obj == 0
-                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
-                    )
+                    i_l = (0 if obj == 0 else self.get_random_location(
+                        min_loc_matrix, max_loc_matrix))
                     obs_nb_locs.append(i_l)
 
             elif self.topic.answer == "none":
@@ -1302,27 +1322,31 @@ class ComplexTracking(BaseModel):
                 # Here we do not allow the full nowhere case
                 max_loc_matrix = self.location_matrix.shape[0] - 1 - 1
                 for a_i in np.unique(actor_choices):
-                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    i_l = self.get_random_location(min_loc_matrix,
+                                                   max_loc_matrix)
                     actor_in_location_fixed[a_i] = i_l
 
                 for obj in objects_nobody:
-                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    i_l = self.get_random_location(min_loc_matrix,
+                                                   max_loc_matrix)
                     obs_nb_locs.append(i_l)
 
             elif self.topic.answer == "unknown":
                 min_loc_matrix = 1
                 max_loc_matrix = self.location_matrix.shape[0] - 1
                 for a_i in np.unique(actor_choices):
-                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    i_l = self.get_random_location(min_loc_matrix,
+                                                   max_loc_matrix)
                     actor_in_location_fixed[a_i] = i_l
 
                 for obj in objects_nobody:
-                    i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                    i_l = self.get_random_location(min_loc_matrix,
+                                                   max_loc_matrix)
                     obs_nb_locs.append(i_l)
 
             else:
                 raise ValueError(
-                    "Error in refine_generation, answer should be 'designated_object', 'none' or 'unknown'"
+                    "Error in refine_generation, answer should be 'designated_object', 'none' or 'unknown'"  # noqa: E501
                 )
 
         if isinstance(self.topic, ObjectInLocationWhere):
@@ -1332,18 +1356,12 @@ class ComplexTracking(BaseModel):
                 if objects.size and objects[0] == 0:
                     actor = actor_choices[0]
                 for a_i in np.unique(actor_choices):
-                    i_l = (
-                        0
-                        if actor == a_i
-                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
-                    )
+                    i_l = (0 if actor == a_i else self.get_random_location(
+                        min_loc_matrix, max_loc_matrix))
                     actor_in_location_fixed[a_i] = i_l
                 for obj in objects_nobody:
-                    i_l = (
-                        0
-                        if obj == 0
-                        else self.get_random_location(min_loc_matrix, max_loc_matrix)
-                    )
+                    i_l = (0 if obj == 0 else self.get_random_location(
+                        min_loc_matrix, max_loc_matrix))
                     obs_nb_locs.append(i_l)
 
             elif self.topic.answer == "unknown":
@@ -1355,25 +1373,28 @@ class ComplexTracking(BaseModel):
                     if actor == a_i:
                         i_l = random.randint(num_locations, max_loc_matrix)
                     else:
-                        i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                        i_l = self.get_random_location(min_loc_matrix,
+                                                       max_loc_matrix)
                     actor_in_location_fixed[a_i] = i_l
 
                 for obj in objects_nobody:
                     if obj == 0:
                         i_l = random.randint(num_locations, max_loc_matrix)
                     else:
-                        i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
+                        i_l = self.get_random_location(min_loc_matrix,
+                                                       max_loc_matrix)
                     obs_nb_locs.append(i_l)
             else:
                 raise ValueError(
-                    "Error in refine_generation, answer should be 'designated_location' or 'unknown'"
+                    "Error in refine_generation, answer should be 'designated_location' or 'unknown'"  # noqa: E501
                 )
 
         # Converting objects_nobody to a list of integers
         objects_nobody = [int(x) for x in objects_nobody]
         # Converting keys in actor_in_location_fixed to python int
         actor_in_location_fixed = {
-            int(k): v for k, v in actor_in_location_fixed.items()
+            int(k): v
+            for k, v in actor_in_location_fixed.items()
         }
         return (
             objects,
@@ -1397,24 +1418,24 @@ class ComplexTracking(BaseModel):
             objects (np.array): list of objects to be assigned to actors.
             actors (np.array): list of actors to be assigned to objects.
         Returns:
-            tuple: a tuple with the following elements:
-                - objects (np.array): list of objects to be assigned to actors.
-                - actor_choices (np.array): list of actors to be assigned to objects.
-                - objects_nobody (np.array): list of objects that are assigned to the nobody
+            objects (np.array): list of objects to be assigned to actors.
+            actor_choices (np.array): list of actors to be assigned to objects.
+            objects_nobody (np.array): list of objects that are assigned to nobody.
         """
         num_objects = len(objects)
         nb_actor = actors[-1]
         assert nb_actor == self.shape[1] - 1, (
-            "The last actor should be the nobody actor"
-        )
-        actor_choices = np.random.choice(actors[:-1], num_objects, replace=True)
+            "The last actor should be the nobody actor")
+        actor_choices = np.random.choice(actors[:-1],
+                                         num_objects,
+                                         replace=True)
         actor_choices = actor_choices + 1
         nb_vector = np.random.binomial(1, self.p_object_in_actor, num_objects)
         actor_choices = nb_vector * actor_choices
         actor_choices = actor_choices - 1
-        objects_nobody = objects[actor_choices < 0].tolist()
-        actor_choices = actor_choices[actor_choices >= 0]
-        objects = objects[actor_choices >= 0]
+        objects_nobody = objects[np.where(actor_choices < 0)[0]].tolist()
+        actor_choices = actor_choices[np.where(actor_choices >= 0)[0]]
+        objects = objects[np.where(actor_choices >= 0)[0]]
         return objects, actor_choices, objects_nobody
 
     def create_random_state_with_antilocations(self, i: int) -> State:
@@ -1464,9 +1485,10 @@ class ComplexTracking(BaseModel):
             i_l = actor_in_location_fixed[a]
             vector = self.location_matrix[i_l]
             idx = np.where(vector == 1)[0].tolist()
-            self.logger.debug(
-                "Step 3: Assign locations for the chosen actors", a=a, i_l=i_l, idx=idx
-            )
+            self.logger.debug("Step 3: Assign locations for the chosen actors",
+                              a=a,
+                              i_l=i_l,
+                              idx=idx)
             location_choices.append(idx)
 
         # Create a mapping of actor -> location to ensure one location per actor
@@ -1487,18 +1509,21 @@ class ComplexTracking(BaseModel):
             nb_location_choices.append(idx)
         # create a mapping of objects in nobody location
         obj_to_location = dict(zip(objects_nobody, nb_location_choices))
-        self.logger.debug("Objects in nobody location", obj_to_location=obj_to_location)
+        self.logger.debug("Objects in nobody location",
+                          obj_to_location=obj_to_location)
         for obj, loc in obj_to_location.items():
             for l_i in loc:
                 sparse_matrix[l_i, -1, obj] = 1
 
         # Get actors with none object (a.k.a `nothing`)
-        AWN = np.where(
-            (sparse_matrix[:, :, :-1] == 0).to_coo().sum(axis=(0, 2)).todense()
-            == sparse_matrix.shape[0] * (sparse_matrix.shape[2] - 1)
-        )[0]
+        AWN = np.where((sparse_matrix[:, :, :-1] == 0).to_coo().sum(
+            axis=(0, 2)).todense() == sparse_matrix.shape[0] *
+                       (sparse_matrix.shape[2] - 1))[0]
         # delete nobody sparse_matrix.shape[1] - 1
-        AWN = np.delete(AWN, np.where(AWN == (sparse_matrix.shape[1] - 1)))
+        AWN = np.delete(
+            AWN,
+            np.where(AWN == (  # noqa: SIM300
+                sparse_matrix.shape[1] - 1)))
         # no for each actor with nothing, pick a random place, and give then the
         # `nothing`(-1) object
         if AWN.size:
@@ -1508,26 +1533,26 @@ class ComplexTracking(BaseModel):
                 i_l = self.get_random_location(min_loc_matrix, max_loc_matrix)
                 vector = self.location_matrix[i_l]
                 list_loc = np.where(vector == 1)[0].tolist()
-                self.logger.debug("Actor with nothing location", a=a, l=list_loc)
+                self.logger.debug("Actor with nothing location",
+                                  a=a,
+                                  l=list_loc)
                 for loc in list_loc:
                     sparse_matrix[loc, a, -1] = 1
-        s = self.state_class(
-            am=sparse_matrix, index=i, verbosity=self.verbosity, log_file=self.log_file
-        )
+        s = self.state_class(am=sparse_matrix,
+                             index=i,
+                             verbosity=self.verbosity,
+                             log_file=self.log_file)
         return s
 
-    def create_transition_map(
-        self,
-    ):
+    def create_transition_map(self, ):
         """
-        Given a matrix with possible locations for actors, this function return a dictionary
-        where:
-        - the keys are the origen of a transition
-        - the values are a list of possible destinations.
+        Given a matrix with possible actor locations, this function return a dict with:
+        - keys: the origen of a transition
+        - values: a list of possible destinations.
         """
         n_l = self.location_matrix.shape[1] // 2
         location_with_allowed_actor_transitions = [
-            np.where(row)[0].tolist() for row in self.location_matrix[: n_l * 2]
+            np.where(row)[0].tolist() for row in self.location_matrix[:n_l * 2]
         ]
         first_half = location_with_allowed_actor_transitions[:n_l]
         second_half = location_with_allowed_actor_transitions[n_l:]
@@ -1556,12 +1581,15 @@ class ComplexTracking(BaseModel):
         self.topic.d2 = d2
         # for dim0, due to anti locations, i need to add each element again
         # to the list, BUT, adding the 'anti-' prefix in each element name
-        anti_locations = [Coordenate(name=f"anti-{d.name}") for d in self.model.dim0]
+        anti_locations = [
+            Coordenate(name=f"anti-{d.name}") for d in self.model.dim0
+        ]
         self.model.dim0.extend(anti_locations)
         self.model.dim1.append(self.uncertainty[1])
         self.model.dim2.append(self.uncertainty[2])
         self._create_aux()
-        self.location_matrix = operators.generate_location_matrix(self.shape[0] // 2)
+        self.location_matrix = operators.generate_location_matrix(
+            self.shape[0] // 2)
         self.location_to_locations_map = self.create_transition_map()
         self.logger.info(
             "Creating _object_in_location_what",
@@ -1570,9 +1598,8 @@ class ComplexTracking(BaseModel):
             l=d0.name,
             a=d1.name,
             o=d2.name,
-            location_matrix_MB="{:.2f} MB".format(
-                self.location_matrix.nbytes / 1024 / 1024
-            ),
+            location_matrix_MB="{:.2f} MB".format(self.location_matrix.nbytes /
+                                                  1024 / 1024),
         )
 
         states = [None] * self.states_qty
@@ -1591,23 +1618,17 @@ class ComplexTracking(BaseModel):
                 # For the corresponding anti-location, for all the other objects (1:-1)
                 # there should be certainty that they are in the anti-location.
                 current_in_not_l = np.array(
-                    x[n_l, :, 1:-1].to_coo().sum(axis=0).todense()
-                )
+                    x[n_l, :, 1:-1].to_coo().sum(axis=0).todense())
                 ideal_not_in_l = np.array([1] * (x.shape[2] - 2))
                 answer_others_not_in_l = np.array_equal(
-                    current_in_not_l, ideal_not_in_l
-                )
+                    current_in_not_l, ideal_not_in_l)
                 # None of the others objects (1:-1) can be in the full-nowhere location
                 # Thas's why (n_l:).
                 not_object_in_full_nowhere = np.all(
-                    x[n_l:, :, 1:-1].to_coo().sum(axis=0) < n_l
-                )
-                return (
-                    in_designated_location
-                    and valid_designated_ok
-                    and answer_others_not_in_l
-                    and not_object_in_full_nowhere
-                )
+                    x[n_l:, :, 1:-1].to_coo().sum(axis=0) < n_l)
+                return (in_designated_location and valid_designated_ok
+                        and answer_others_not_in_l
+                        and not_object_in_full_nowhere)
 
             condition = check_designated_object
         elif self.topic.answer == "none":
@@ -1617,14 +1638,12 @@ class ComplexTracking(BaseModel):
                 is_empty_location = x[0, :, :-1].to_coo().sum() == 0
                 # For the anti-location designated, all Os added by column, are there.
                 current_not_in_l = np.array(
-                    x[n_l, :, :-1].to_coo().sum(axis=0).todense()
-                )
+                    x[n_l, :, :-1].to_coo().sum(axis=0).todense())
                 ideal_not_in_l = np.array([1] * (x.shape[2] - 1))
                 all_not_in_l = np.array_equal(current_not_in_l, ideal_not_in_l)
                 # None objects in the full-nowhere location
                 not_object_in_full_nowhere = np.all(
-                    x[n_l:, :, :-1].to_coo().sum(axis=0) < n_l
-                )
+                    x[n_l:, :, :-1].to_coo().sum(axis=0) < n_l)
                 return is_empty_location and all_not_in_l and not_object_in_full_nowhere
 
             condition = check_none
@@ -1654,14 +1673,15 @@ class ComplexTracking(BaseModel):
 
         else:
             raise ValueError(
-                "Invalid answer value, should be 'designated_object', 'none' or 'unknown'"
+                "Invalid answer should be 'designated_object', 'none' or 'unknown'"
             )
 
         states[i] = self.initialize_state_with_antilocations(i, condition)
         for j in list(reversed(range(i))):
             condition = lambda x: True
             axis = 2 if self.choice() else 1
-            states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+            states[j] = self.create_new_state(j, states[j + 1], condition,
+                                              axis)
 
         return states
 
@@ -1674,12 +1694,15 @@ class ComplexTracking(BaseModel):
         self.topic.d2 = d2
         # for dim0, due to anti locations, i need to add each element again
         # to the list, BUT, adding the 'anti-' prefix in each element name
-        anti_locations = [Coordenate(name=f"anti-{d.name}") for d in self.model.dim0]
+        anti_locations = [
+            Coordenate(name=f"anti-{d.name}") for d in self.model.dim0
+        ]
         self.model.dim0.extend(anti_locations)
         self.model.dim1.append(self.uncertainty[1])
         self.model.dim2.append(self.uncertainty[2])
         self._create_aux()
-        self.location_matrix = operators.generate_location_matrix(self.shape[0] // 2)
+        self.location_matrix = operators.generate_location_matrix(
+            self.shape[0] // 2)
         self.location_to_locations_map = self.create_transition_map()
         self.logger.info(
             "Creating _object_in_location_where",
@@ -1688,9 +1711,8 @@ class ComplexTracking(BaseModel):
             l=d0.name,
             a=d1.name,
             o=d2.name,
-            location_matrix_MB="{:.2f} MB".format(
-                self.location_matrix.nbytes / 1024 / 1024
-            ),
+            location_matrix_MB="{:.2f} MB".format(self.location_matrix.nbytes /
+                                                  1024 / 1024),
         )
 
         states = [None] * self.states_qty
@@ -1704,7 +1726,8 @@ class ComplexTracking(BaseModel):
                 f_half = x[:, :, 0].to_coo().T[y][:n_l]
                 s_half = x[:, :, 0].to_coo().T[y][n_l:]
                 # validate that vector of ones is generated.
-                valid_designated_ok = list((f_half + s_half).todense()) == ([1] * n_l)
+                valid_designated_ok = list(
+                    (f_half + s_half).todense()) == ([1] * n_l)
                 return in_designated_location and valid_designated_ok
 
             condition = check_designated_location
@@ -1726,10 +1749,12 @@ class ComplexTracking(BaseModel):
         for j in list(reversed(range(i))):
             condition = lambda x: True
             axis = 2 if self.choice() else 1
-            states[j] = self.create_new_state(j, states[j + 1], condition, axis)
+            states[j] = self.create_new_state(j, states[j + 1], condition,
+                                              axis)
 
         # TODO: It will be required a forward pass.
-        # This forward pass will need to catch the deltas, and based on that update all the state information.
+        # This forward pass will need to catch the deltas, and based on that update all
+        # the state information.
         # The implications of this will be defined later.
 
         return states
@@ -1755,33 +1780,34 @@ class ComplexTracking(BaseModel):
             applying the transitions.
         """
         if isinstance(self.topic, ObjectInLocationPolar):
-            new_am = state.create_transition(
-                self.num_transitions, condition, axis, filter
-            )
-        elif isinstance(self.topic, (ObjectInLocationWhat, ObjectInLocationWhere)):
-            new_am = state.create_transition(
+            new_am = state.create_transition(self.num_transitions, condition,
+                                             axis, filter)
+            if new_am is None:
+                self.logger.error(
+                    "Fail both: make_actor_transition & make_object_transition"
+                )
+                raise ValueError(
+                    "None compatible solution founded for axis / transition")
+            new_state = self.state_class(am=new_am,
+                                         index=j,
+                                         verbosity=self.verbosity,
+                                         log_file=self.log_file)
+        elif isinstance(self.topic,
+                        (ObjectInLocationWhat, ObjectInLocationWhere)):
+            new_state = state.create_transition(
                 self.num_transitions,
                 self.location_to_locations_map,
                 condition,
                 axis,
                 filter,
             )
-        if new_am is None:
-            self.logger.error(
-                "Fail both: make_actor_transition & make_object_transition"
-            )
-            raise ValueError(
-                "There could;t be found any compatible solution for axis / transition"
-            )
-        new_state = self.state_class(
-            am=new_am, index=j, verbosity=self.verbosity, log_file=self.log_file
-        )
         return new_state
 
     def choice(self):
         return np.random.uniform(0, 1) < self.p_move_d2
 
     def create_transitions(self):
+
         def process_delta(diff):
             """
             This function generate the delta in the form of:
@@ -1829,7 +1855,8 @@ class ComplexTracking(BaseModel):
                 pair = diff.data
                 e = np.where(pair == 1)[0][0]
                 o = np.where(pair == -1)[0][0]
-                delta_j = [(1, 0), diff.coords.T[o][:-1], diff.coords.T[e][:-1]]
+                delta_j = [(1, 0), diff.coords.T[o][:-1],
+                           diff.coords.T[e][:-1]]
                 return delta_j
             else:
                 raise ValueError("q_locations should be 1 or 2")
@@ -1848,6 +1875,7 @@ class ComplexTracking(BaseModel):
         return
 
     def create_fol(self):
+
         def enumerate_model(element: list, shape_type: str) -> list[list]:
             enumeration = []
             for e in element:
@@ -1865,8 +1893,7 @@ class ComplexTracking(BaseModel):
                         entity=self.dim1_idx_to_obj[a],
                         coordenate=self.dim0_idx_to_obj[loc],
                         shape_str=(self.shape_str[0], self.shape_str[1]),
-                    )
-                )
+                    ))
             # 2) Actor with objects in a place
             actors_in_locations_objects = state.am[:, :-1, :-1]
             actor_done = []
@@ -1879,16 +1906,15 @@ class ComplexTracking(BaseModel):
                             In(
                                 entity=self.dim1_idx_to_obj[a],
                                 coordenate=self.dim0_idx_to_obj[loc],
-                                shape_str=(self.shape_str[0], self.shape_str[1]),
-                            )
-                        )
+                                shape_str=(self.shape_str[0],
+                                           self.shape_str[1]),
+                            ))
                 state_sentences.append(
                     In(
                         entity=self.dim2_idx_to_obj[o],
                         coordenate=self.dim1_idx_to_obj[a],
                         shape_str=(self.shape_str[1], self.shape_str[2]),
-                    )
-                )
+                    ))
 
             # 3) Objects in a place
             objects_in_locations = state.am[:-1, -1, :-1]
@@ -1898,8 +1924,7 @@ class ComplexTracking(BaseModel):
                         entity=self.dim2_idx_to_obj[o],
                         coordenate=self.dim0_idx_to_obj[loc],
                         shape_str=(self.shape_str[0], self.shape_str[2]),
-                    )
-                )
+                    ))
             # Regarding actos in nowhere, there is no sentece.
             return state_sentences
 
@@ -1926,7 +1951,8 @@ class ComplexTracking(BaseModel):
             if delta[0] not in delta_mappings:
                 raise ValueError("Invalid delta")
 
-            entity_map, coord_map, shape_str, uncertainty = delta_mappings[delta[0]]
+            entity_map, coord_map, shape_str, uncertainty = delta_mappings[
+                delta[0]]
 
             idx_entity = delta[1][1]
             idx_prev_coord = delta[1][0]
@@ -1937,25 +1963,25 @@ class ComplexTracking(BaseModel):
             next_coord = coord_map[idx_next_coord]
 
             if prev_coord == uncertainty:
-                transition_sentences = To(
-                    entity=entity, coordenate=next_coord, shape_str=shape_str
-                )
+                transition_sentences = To(entity=entity,
+                                          coordenate=next_coord,
+                                          shape_str=shape_str)
             elif next_coord == uncertainty:
-                transition_sentences = From(
-                    entity=entity, coordenate=prev_coord, shape_str=shape_str
-                )
+                transition_sentences = From(entity=entity,
+                                            coordenate=prev_coord,
+                                            shape_str=shape_str)
             else:
-                transition_sentences = random.choice(
-                    [
-                        To(entity=entity, coordenate=next_coord, shape_str=shape_str),
-                        FromTo(
-                            entity=entity,
-                            coordenate1=prev_coord,
-                            coordenate2=next_coord,
-                            shape_str=shape_str,
-                        ),
-                    ]
-                )
+                transition_sentences = random.choice([
+                    To(entity=entity,
+                       coordenate=next_coord,
+                       shape_str=shape_str),
+                    FromTo(
+                        entity=entity,
+                        coordenate1=prev_coord,
+                        coordenate2=next_coord,
+                        shape_str=shape_str,
+                    ),
+                ])
 
             return [transition_sentences]
 
