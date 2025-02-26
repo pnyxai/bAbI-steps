@@ -8,8 +8,8 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sparse._sparse_array import SparseArray
 
-import babisteps.utils.operators as ops
-from babisteps.utils import logger
+import babisteps.operators as ops
+from babisteps import logger
 
 
 class State(BaseModel):
@@ -333,9 +333,8 @@ class ObjectInLocationState(State):
         Each element of the list is a dictionary with the actor index and the possible
         transition as value.
         """
-        actors_in_location = self.actor_locations_map
         possible_actor_transition = []
-        for a, loc in actors_in_location.items():
+        for a, loc in self.actor_locations_map.items():
             # check that loc is a key in the mapper, if not, skip
             if tuple(loc) not in location_to_locations_map:
                 continue
@@ -454,7 +453,7 @@ class ObjectInLocationState(State):
         location_to_locations_map,
         filter: Optional[Callable] = None,
         limit=50,
-    ) -> Union[State, None]:
+    ) -> tuple[Optional[State], Optional[list]]:
         """
         Creates a delta of object-actor pairs based on specified conditions.
         Args:
@@ -541,11 +540,16 @@ class ObjectInLocationState(State):
                 if len(future_act_txs) == 0 and len(future_obj_txs) == 0:
                     self.logger.warning("No possible transitions, retrying")
                     continue
+                self.logger.debug(
+                    "actor_locations_map",
+                    actor_locations_map=new_state.actor_locations_map)
+                self.logger.debug("new_state.objects_map",
+                                  objects_map=new_state.objects_map)
                 pass
             else:
                 t += 1
                 continue
-            self.logger.debug(
+            self.logger.info(
                 "Tx: object",
                 z=int(obj_rnd),
                 loc=current_loc,
@@ -555,9 +559,12 @@ class ObjectInLocationState(State):
                 next_y_loc=previous_parent_rnd_loc,
                 retry=t,
             )
-            return new_state
+            delta = [(2, 1), [int(previous_parent_rnd),
+                              int(obj_rnd)], [int(owner),
+                                              int(obj_rnd)]]
+            return (new_state, delta)
 
-        return None
+        return (None, None)
 
     def make_actor_transition(
         self,
@@ -567,7 +574,7 @@ class ObjectInLocationState(State):
         location_to_locations_map,
         filter: Optional[Callable] = None,
         limit=50,
-    ) -> Union[SparseArray, None]:
+    ) -> tuple[Optional[State], Optional[list]]:
         """
         Creates a delta of actor-location pairs based on specified conditions.
         Args:
@@ -605,8 +612,13 @@ class ObjectInLocationState(State):
                     location_to_locations_map)
                 future_obj_txs = new_state.get_possible_objects_transitions()
                 if len(future_act_txs) == 0 and len(future_obj_txs) == 0:
-                    self.logger.info("No possible transitions, retrying")
+                    self.logger.debug("No possible transitions, retrying")
                     continue
+                self.logger.debug(
+                    "actor_locations_map",
+                    actor_locations_map=new_state.actor_locations_map)
+                self.logger.debug("new_state.objects_map",
+                                  objects_map=new_state.objects_map)
                 pass
             else:
                 # remove the tx from act_txs_tmp
@@ -620,15 +632,17 @@ class ObjectInLocationState(State):
             #         "validate_next do not aggregates axis (0,1) into [1,1,..,1]"
             #     )
 
-            self.logger.debug(
+            self.logger.info(
                 "Tx: actor",
                 y=y,
                 x=current_x,
                 next_x=xs,
                 z=zs,
             )
-            return new_state
-        return None
+            # Lets create the delta!
+            delta = [(1, 0), [xs, int(y)], [current_x, int(y)]]
+            return (new_state, delta)
+        return (None, None)
 
     def create_transition(
         self,
@@ -645,7 +659,7 @@ class ObjectInLocationState(State):
             act_txs = self.get_possibles_actor_transitions(
                 location_to_locations_map)
             if act_txs:
-                new_state = self.make_actor_transition(
+                new_state, delta = self.make_actor_transition(
                     act_txs,
                     num_transitions,
                     condition,
@@ -658,7 +672,7 @@ class ObjectInLocationState(State):
                     )
                     obj_txs = self.get_possible_objects_transitions()
                     if obj_txs:
-                        new_state = self.make_object_transition(
+                        new_state, delta = self.make_object_transition(
                             obj_txs,
                             num_transitions,
                             condition,
@@ -672,7 +686,7 @@ class ObjectInLocationState(State):
         elif axis == 2:
             obj_txs = self.get_possible_objects_transitions()
             if obj_txs:
-                new_state = self.make_object_transition(
+                new_state, delta = self.make_object_transition(
                     obj_txs,
                     num_transitions,
                     condition,
@@ -686,7 +700,7 @@ class ObjectInLocationState(State):
                     act_txs = self.get_possibles_actor_transitions(
                         location_to_locations_map)
                     if act_txs:
-                        new_state = self.make_actor_transition(
+                        new_state, delta = self.make_actor_transition(
                             act_txs,
                             num_transitions,
                             condition,
@@ -705,4 +719,4 @@ class ObjectInLocationState(State):
                 "Impossible to make any kind of transition, FATAL!", axis=axis)
             raise ValueError(
                 "Impossible to make any kind of transition, FATAL!")
-        return new_state
+        return new_state, delta

@@ -3,7 +3,7 @@ import os
 import shutil
 from copy import deepcopy
 from pathlib import Path
-from typing import get_args
+from typing import get_args, Optional
 
 from babisteps.basemodels.generators import (ActorInLocationPolar,
                                              ActorInLocationWhere,
@@ -14,8 +14,11 @@ from babisteps.basemodels.generators import (ActorInLocationPolar,
                                              ComplexTracking,
                                              EntitiesInCoordenates,
                                              ObjectInLocationPolar,
+                                             ObjectInLocationWhat,
+                                            ObjectInLocationWhere,
                                              ObjectsInLocation, SimpleTracker)
 from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.utils import simple_parse_args_string
 
 
 def prepare_path(path: Path, folder_name: str, logger):
@@ -93,7 +96,16 @@ def create_simpletracking(
     path: Path,
     verbosity,
     logger,
+    gen_kwargs: Optional[str] = None,    
 ):
+
+    if gen_kwargs is not None:
+        gen_kwargs = simple_parse_args_string(gen_kwargs)
+        if gen_kwargs == "":
+            gen_kwargs = None
+        else:
+            logger.info("Parsed generator kwargs", kwargs=gen_kwargs)
+
     # constraing to Actors in Location, then objects is empty
     if locations and actors and not objects:
         question_request = {
@@ -141,6 +153,8 @@ def create_simpletracking(
             verbosity=verbosity,
             shape_str=shape_str,
             log_file=os.path.join(path, "logs.txt"),
+            # add only if gen_kwargs is not None
+            **gen_kwargs if gen_kwargs is not None else {},
         )
         generator.create_ontology()
         generator.create_fol()
@@ -165,9 +179,19 @@ def create_complextracking(
     path: Path,
     verbosity,
     logger,
+    gen_kwargs: Optional[str] = None,
 ):
+    
+    if gen_kwargs is not None:
+        gen_kwargs = simple_parse_args_string(gen_kwargs)
+        if gen_kwargs == "":
+            gen_kwargs = None
+        else:
+            logger.info("Parsed generator kwargs", kwargs=gen_kwargs)
     question_request = {
         "polar": ObjectInLocationPolar,
+        "what": ObjectInLocationWhat,
+        "where": ObjectInLocationWhere,
     }
     shape_str = ("Location", "Actor", "Object")
     d0 = [Coordenate(name=coordenate) for coordenate in locations]
@@ -188,18 +212,31 @@ def create_complextracking(
 
     jsonl_dataset = []
     txt_dataset = ""
+    max_retries = gen_kwargs.get("max_retries", 10) if gen_kwargs is not None else 10
     for s in range(q_stories):
         logger.info("Creating story", story=s)
-        generator = ComplexTracking(
-            model=deepcopy(model)._shuffle(),
-            states_qty=states_qty,
-            topic=topic,
-            verbosity=verbosity,
-            shape_str=shape_str,
-            log_file=os.path.join(path, "logs.txt"),
-        )
-        generator.create_ontology()
-        generator.create_fol()
+        retries = 0
+        while retries < max_retries:
+            try:
+                generator = ComplexTracking(
+                    model=deepcopy(model)._shuffle(),
+                    states_qty=states_qty,
+                    topic=topic,
+                    verbosity=verbosity,
+                    shape_str=shape_str,
+                    log_file=os.path.join(path, "logs.txt"),
+                    # add only if gen_kwargs is not None
+                    **gen_kwargs if gen_kwargs is not None else {},
+                )
+                generator.create_ontology()
+                generator.create_fol()
+                break
+            except Exception as e:
+                logger.error("Error creating story", error=str(e))
+                retries += 1
+        if retries >= max_retries:
+            logger.error("Max retries reached. Skipping story", story=s)
+            raise Exception("Max retries reached. Skipping story")
 
         json = generator.story.create_json()
         txt = generator.story.create_txt()

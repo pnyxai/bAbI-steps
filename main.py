@@ -5,8 +5,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from babisteps.utils import logger
-from babisteps.utils import proccesing as proc
+from babisteps import logger
+from babisteps import proccesing as proc
 
 
 def split_or_empty(value):
@@ -41,6 +41,13 @@ def main():
                         type=str,
                         default="./outputs",
                         help="Path to save the script results")
+    parser.add_argument(
+        "--gen_kwargs",
+        type=str,
+        default=None,
+        help=("String arguments for story generation,"
+              " e.g. `p_antilocation=0.5,p_object_in_actor=0.75`"),
+    )
     parser.add_argument(
         "--verbosity",
         "-v",
@@ -87,6 +94,7 @@ def main():
             path=output_path,
             verbosity=getattr(logging, f"{args.verbosity}"),
             logger=main_logger,
+            gen_kwargs=args.gen_kwargs,
         )
     elif args.task == "complextracking":
         # Count how many lists are non-empty
@@ -107,6 +115,7 @@ def main():
             path=output_path,
             verbosity=getattr(logging, f"{args.verbosity}"),
             logger=main_logger,
+            gen_kwargs=args.gen_kwargs,
         )
 
     else:
