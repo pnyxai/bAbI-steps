@@ -1,12 +1,15 @@
 import argparse
 import logging
 import os
+import random
 import time
 from datetime import datetime
 from pathlib import Path
 
-from babisteps.utils import logger
-from babisteps.utils import proccesing as proc
+import numpy as np
+
+from babisteps import logger
+from babisteps import proccesing as proc
 
 
 def split_or_empty(value):
@@ -41,6 +44,24 @@ def main():
                         type=str,
                         default="./outputs",
                         help="Path to save the script results")
+    # From https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/__main__.py
+    parser.add_argument(
+        "--gen_kwargs",
+        type=str,
+        default=None,
+        help=("String arguments for story generation,"
+              " e.g. `p_antilocation=0.5,p_object_in_actor=0.75`"),
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Random seed for python's random module. Default set to 0.")
+    parser.add_argument(
+        "--numpy_random_seed",
+        type=int,
+        default=1234,
+        help="Random seed for numpy's random module. Default set to 1234.")
     parser.add_argument(
         "--verbosity",
         "-v",
@@ -69,6 +90,18 @@ def main():
                                     log_file=os.path.join(
                                         output_path, "logs.txt"))
 
+    seed_message = []
+    if args.seed is not None:
+        # See https://github.com/EleutherAI/lm-evaluation-harness/pull/1412
+        seed_message.append(f"Setting random seed to {args.seed}")
+        random.seed(args.seed)
+
+    if args.numpy_random_seed is not None:
+        seed_message.append(f"Setting numpy seed to {args.numpy_random_seed}")
+        np.random.seed(args.numpy_random_seed)
+    if seed_message:
+        main_logger.info(" | ".join(seed_message))
+
     if args.task == "simpletracking":
         # Count how many lists are non-empty
         non_empty_count = sum(
@@ -87,6 +120,7 @@ def main():
             path=output_path,
             verbosity=getattr(logging, f"{args.verbosity}"),
             logger=main_logger,
+            gen_kwargs=args.gen_kwargs,
         )
     elif args.task == "complextracking":
         # Count how many lists are non-empty
@@ -107,6 +141,7 @@ def main():
             path=output_path,
             verbosity=getattr(logging, f"{args.verbosity}"),
             logger=main_logger,
+            gen_kwargs=args.gen_kwargs,
         )
 
     else:

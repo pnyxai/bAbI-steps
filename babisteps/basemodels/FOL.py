@@ -153,3 +153,25 @@ class FromTo(FOL):
             return random.choice(options)
         else:
             raise ValueError("Invalid types for FromTo relation")
+
+
+class Out(FOL):
+    entity: Union[Entity, Coordenate]
+    coordenate: Union[Entity, Coordenate]
+
+    def to_nl(self) -> str:
+        e, c = self.entity.name, self.coordenate.name
+
+        if self.shape_str == ("Location", "Actor"):
+            options = [
+                f"{e} is away from the {c}.",
+                f"{e} is outside of the {c}.",
+            ]
+            return random.choice(options)
+
+        elif self.shape_str == ("Location", "Object"):
+            options = [
+                f"The {e} is away from the {c}.",
+                f"The {e} is outside of the {c}.",
+            ]
+            return random.choice(options)
