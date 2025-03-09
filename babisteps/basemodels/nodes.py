@@ -322,10 +322,12 @@ class ObjectInLocationState(State):
                 location_val = int(loc)
                 actor_locations.setdefault(actor_key, set()).add(location_val)
         # Convert each actor's set of locations to a sorted list (with python ints)
-        return {
+        map = {
             actor: sorted(list(locs))
             for actor, locs in actor_locations.items()
         }
+        # sort the dictionary by key
+        return dict(sorted(map.items()))
 
     def get_possibles_actor_transitions(self, location_to_locations_map):
         """
