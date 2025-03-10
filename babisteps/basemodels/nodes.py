@@ -2,7 +2,7 @@ import logging
 import random
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Literal, Optional, Union
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -301,6 +301,8 @@ class ObjectInLocationState(State):
     am: SparseArray
     actor_locations_map: Optional[dict] = None
     objects_map: Optional[dict] = None
+    p_nowhere_OR: Optional[float] = None
+    method_p_nowhere_OR: Optional[Literal['fix', 'cap']] = None
 
     def get_actor_locations(self):
         """
@@ -447,6 +449,50 @@ class ObjectInLocationState(State):
             }
         return object_transitions
 
+    def _get_OR_parents(self, possible_parents_locations):
+        """
+        Funtion that retrieve one of the possible parents locations.
+        IMPORTANT: It assumes that the NOWHERE location is the last one.
+        When there is more that 1 possible parent location, it will take
+        the NOWHERE with probability p.
+
+        Args:
+            possible_parents_locations (list): List of possible parents locations.
+
+        Returns:
+            owner_prev_loc (list): List of the previous owner location.
+            parent_prev_loc (list): List of the previous parent location.
+        
+        """
+        if len(possible_parents_locations) > 1:
+            # TODO: Replace the p with a parameter that can be set by the user
+            p = 1 / len(possible_parents_locations)
+            if self.method_p_nowhere_OR == 'fix':
+                p = self.p_nowhere_OR if self.p_nowhere_OR else p
+            elif self.method_p_nowhere_OR == 'cap':
+                p = min(p, self.p_nowhere_OR) if self.p_nowhere_OR else p
+
+            #p = min(p, self.p_nowhere_OR) if self.p_nowhere_OR else p
+            if random.random() < p:
+                # 1. Pick the NOWHERE location
+                possible_parents_location = possible_parents_locations[-1]
+            else:
+                # 2. Pick a random possible_parents_locations pairs
+                # except the NOWHERE location
+                possible_parents_location = random.choice(
+                    possible_parents_locations[:-1])
+        else:
+            # 3. Pick the only possible parent location
+            possible_parents_location = possible_parents_locations[0]
+
+        # Assing x1,x2 OR to owner/previous_parent_rnd
+        c = random.getrandbits(1)
+        owner_prev_loc = np.array(possible_parents_location[c])
+        owner_prev_loc = np.where(owner_prev_loc == 1)[0].tolist()
+        parent_prev_loc = np.array(possible_parents_location[1 - c])
+        parent_prev_loc = np.where(parent_prev_loc == 1)[0].tolist()
+        return owner_prev_loc, parent_prev_loc
+
     def make_object_transition(
         self,
         obj_txs: dict,
@@ -480,17 +526,9 @@ class ObjectInLocationState(State):
             current_loc = obj_txs_tmp[obj_rnd]["current_location"]
             owner = obj_txs_tmp[obj_rnd]["owner"]
             # 3. Pick a random possible_parents_locations pairs
-            possible_parents_locations = random.choice(
+            owner_prev_loc, parent_prev_loc = self._get_OR_parents(
                 obj_txs_tmp[obj_rnd]["possible_parents_locations"])
-            # Assing x1,x2 OR to owner/previous_parent_rnd
-            c = random.getrandbits(1)
-            owner_prev_loc = np.array(possible_parents_locations[c])
-            owner_prev_loc = np.where(owner_prev_loc == 1)[0].tolist()
-            previous_parent_rnd_loc = np.array(possible_parents_locations[1 -
-                                                                          c])
-            previous_parent_rnd_loc = np.where(
-                previous_parent_rnd_loc == 1)[0].tolist()
-            # 4.a Remove obj_rnd from the current actor
+            # 4. Remove obj_rnd from the current actor
             new_am[:, owner, obj_rnd] = 0
             # 5. Adjust objects position for both owner and previous_parent_rnd
             # this is done only for the object that is not the object to be moved
@@ -501,21 +539,21 @@ class ObjectInLocationState(State):
                             and previous_parent_rnd != nb):
                         for x in current_loc:
                             new_am[x, previous_parent_rnd, z] = 0
-                        for x in previous_parent_rnd_loc:
+                        for x in parent_prev_loc:
                             new_am[x, previous_parent_rnd, z] = 1
                     if obj_txs[z]["owner"] == owner and owner != nb:
                         for x in current_loc:
                             new_am[x, owner, z] = 0
                         for x in owner_prev_loc:
                             new_am[x, owner, z] = 1
-            # 5. Place the object to the new actor
-            for x in previous_parent_rnd_loc:
+            # 6. Place the object to the new actor
+            for x in parent_prev_loc:
                 new_am[x, previous_parent_rnd, obj_rnd] = 1
 
-            # 6. Now, clean the `nothing` from previous_parent_rnd
+            # 7. Now, clean the `nothing` from previous_parent_rnd
             # (now it has an object!)
             new_am[:, previous_parent_rnd, -1] = 0
-            # 7. If the owner has no objects, give them the 'nothing' object, except
+            # 8. If the owner has no objects, give them the 'nothing' object, except
             # if the owner is the nobody actor
             if new_am[:, owner, :-1].to_coo().sum() == 0 and owner != nb:
                 # log that the owner has nothing
@@ -525,10 +563,12 @@ class ObjectInLocationState(State):
                 for x in owner_prev_loc:
                     new_am[x, owner, -1] = 1
 
-            # 7.a If the condition is met, return the new state
+            # 9 If the condition is met, return the new state
             if condition(new_am):
                 new_state = ObjectInLocationState(
                     am=new_am,
+                    p_nowhere_OR=self.p_nowhere_OR,
+                    method_p_nowhere_OR=self.method_p_nowhere_OR,
                     index=self.index - 1,
                     verbosity=self.verbosity,
                     log_file=self.log_file,
@@ -558,7 +598,7 @@ class ObjectInLocationState(State):
                 owner=int(owner),
                 owner_next_loc=owner_prev_loc,
                 next_y=int(previous_parent_rnd),
-                next_y_loc=previous_parent_rnd_loc,
+                next_y_loc=parent_prev_loc,
                 retry=t,
             )
             delta = [(2, 1), [int(previous_parent_rnd),
@@ -604,6 +644,8 @@ class ObjectInLocationState(State):
                 new_state = ObjectInLocationState(
                     am=new_am,
                     index=self.index - 1,
+                    p_nowhere_OR=self.p_nowhere_OR,
+                    method_p_nowhere_OR=self.method_p_nowhere_OR,
                     verbosity=self.verbosity,
                     log_file=self.log_file,
                 )

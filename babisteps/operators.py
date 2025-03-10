@@ -160,6 +160,13 @@ def generate_OR_parents(x: np.array) -> list:
         "The result of first half + second half is NOT equal to all ones.")
     solutions = filter_unique_parent_combinations(
         generate_parent_combinations(x), n, is_valid_parent)
+    # Edge case: switch the unique 1 in first_half to 0 and generate additional parents.
+    index_of_one = int(np.where(first_half == 1)[0][0])
+    x_copy = x.copy()
+    x_copy[index_of_one] = 0
+    additional = filter_unique_parent_combinations(
+        generate_parent_combinations(x_copy), n, is_valid_parent_antilocations)
+    solutions = solutions + additional
     # Create special case where child is combination of
     # the full nowhere parent and the child == x.
     # Add the nowhere_parent special case
@@ -169,11 +176,4 @@ def generate_OR_parents(x: np.array) -> list:
     # OF ASIGN A SPECIFIC PROBABILITY OF OCCURENCE
     nowhere_parent = ([0] * n + [1] * n, x.copy().astype(int).tolist())
     solutions.append(nowhere_parent)
-    # Edge case: switch the unique 1 in first_half to 0 and generate additional parents.
-    index_of_one = int(np.where(first_half == 1)[0][0])
-    x_copy = x.copy()
-    x_copy[index_of_one] = 0
-    additional = filter_unique_parent_combinations(
-        generate_parent_combinations(x_copy), n, is_valid_parent_antilocations)
-
-    return solutions + additional
+    return solutions

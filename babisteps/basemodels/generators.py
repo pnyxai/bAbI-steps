@@ -913,10 +913,12 @@ class ComplexTracking(BaseModel):
     shape: Optional[tuple[int, int, int]] = None
     location_to_locations_map: Optional[dict] = None
     shape_str: tuple
-    p_antilocation: float = 0.5
+    p_antilocation: float = 0.5  # Only applies in the creation of last state
     p_object_in_actor: Optional[float] = None
-    location_matrix: Optional[Any] = None
+    p_nowhere_OR: Optional[float] = None
+    method_p_nowhere_OR: Optional[Literal['fix', 'cap']] = None
     p_move_object_tx: float = 0.5
+    location_matrix: Optional[Any] = None
     state_class: Optional[State] = None
 
     @model_validator(mode="after")
@@ -943,9 +945,31 @@ class ComplexTracking(BaseModel):
         # If not defined, p_object_in_actor is set to 1/len(dim2)+1 (to consider nobody)
         if not self.p_object_in_actor:
             self.p_object_in_actor = 1 - (1 / (len(self.model.dim1) + 1))
+        return self
 
-        self.logger.info("Setting p_object_in_actor",
-                         p_object_in_actor=self.p_object_in_actor)
+    @model_validator(mode="after")
+    def check_p_nowhere_OR(self):
+        # If p_nowhere_OR is defined, method_p_nowhere_OR should be defined too
+        # and vice versa
+        if self.p_nowhere_OR and not self.method_p_nowhere_OR:
+            raise ValueError(
+                "If p_nowhere_OR is defined, method_p_nowhere_OR should be defined too"
+            )
+        if not self.p_nowhere_OR and self.method_p_nowhere_OR:
+            raise ValueError(
+                "If method_p_nowhere_OR is defined, p_nowhere_OR should be defined too"
+            )
+        return self
+
+    # function to log p values after instance creation
+    @model_validator(mode="after")
+    def log_p_values(self):
+        self.logger.info("Probability values",
+                         p_antilocation=self.p_antilocation,
+                         p_object_in_actor=self.p_object_in_actor,
+                         p_nowhere_OR=self.p_nowhere_OR,
+                         method_p_nowhere_OR=self.method_p_nowhere_OR,
+                         p_move_object_tx=self.p_move_object_tx)
         return self
 
     def load_ontology_from_topic(self) -> tuple[Callable, Callable]:
@@ -1033,6 +1057,7 @@ class ComplexTracking(BaseModel):
         This function return a random index from the location matrix given
         the boundaries: min_loc_matrix (for known locations) and max_loc_matrix
         (for unknown locations).
+        Only applies in the creation of the last state.
         """
         num_locations = self.shape[0] // 2
         if self.choice_known_location():
@@ -1543,6 +1568,8 @@ class ComplexTracking(BaseModel):
                     sparse_matrix[loc, a, -1] = 1
         s = self.state_class(am=sparse_matrix,
                              index=i,
+                             p_nowhere_OR=self.p_nowhere_OR,
+                             method_p_nowhere_OR=self.method_p_nowhere_OR,
                              verbosity=self.verbosity,
                              log_file=self.log_file)
         return s
@@ -1874,13 +1901,13 @@ class ComplexTracking(BaseModel):
         )
 
         if isinstance(e, Exception):
-            pass
             self.logger.error("FORWARD PASS",
                               error=e,
                               groups=groups,
                               actor_locations_map=actor_locations_map,
                               objects_map=objects_map,
                               i=i)
+            raise e
         else:
             am = self.create_state_with_maps(actor_locations_map, objects_map)
             if condition(am):

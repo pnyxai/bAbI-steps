@@ -1,7 +1,9 @@
-import numpy as np
-from typing import Optional, Union
-from pydantic import BaseModel
 from copy import deepcopy
+from typing import Optional, Union
+
+import numpy as np
+from pydantic import BaseModel
+
 from babisteps.basemodels.nodes import State
 
 
@@ -11,9 +13,8 @@ class Group(BaseModel):
     objects: Optional[list] = []
 
 
-def _check_if_isin_group(
-    groups: list[Group], actor: int, object: int, nobody_index: int
-) -> Union[bool, int]:
+def _check_if_isin_group(groups: list[Group], actor: int, object: int,
+                         nobody_index: int) -> Union[bool, int]:
     flag = False
     if actor == nobody_index:
         for i, g in enumerate(groups):
@@ -87,7 +88,8 @@ def _retrieve_group(
         return actor_in_group
 
 
-def _get_object_transaction_OR_result(n_locs: int, y_i_group: Group, y_f_group: Group):
+def _get_object_transaction_OR_result(n_locs: int, y_i_group: Group,
+                                      y_f_group: Group):
     """
     Given a state s_i and actros y_i and y_f, it returns the location vector results of
     the interaction.
@@ -134,13 +136,12 @@ def _get_object_transaction_OR_result(n_locs: int, y_i_group: Group, y_f_group: 
             _or[idx] = 1
     else:
         # The result is the OR betwen some anti-locations and some known location.
-        assert np.sum(first_half) == 1, "There should be only one 1 in the first half"
+        assert np.sum(
+            first_half) == 1, "There should be only one 1 in the first half"
         assert np.sum(second_half) == known_locs - 1, (
-            "There should be only one 0 in the second half"
-        )
-    assert not bool(np.all(_or[known_locs:])), (
-        "there can't be all 1s in the second half"
-    )
+            "There should be only one 0 in the second half")
+    assert not bool(np.all(
+        _or[known_locs:])), ("there can't be all 1s in the second half")
     return np.where(_or == 1)[0]
 
 
@@ -174,15 +175,20 @@ def _get_forward(
                     # remove the object from the group
                     groups[actor_in_group].actors.remove(y_i)
                     # if the group is empty, remove it
-                    if (
-                        not groups[actor_in_group].actors
-                        and not groups[actor_in_group].objects
-                    ):
+                    if (not groups[actor_in_group].actors
+                            and not groups[actor_in_group].objects):
                         groups.pop(actor_in_group)
 
                 # time to update the actor location
                 actor_locations_map[y_i] = x_f
-
+                logger.debug(
+                    "Forward checking",
+                    i=i,
+                    delta=d,
+                    actor_locations_map=actor_locations_map,
+                    objects_map=objects_map,
+                    groups=groups,
+                )
             elif tx == (2, 1):
                 z = d[1][1]
                 y_i = d[1][0]
@@ -246,32 +252,45 @@ def _get_forward(
                 else:
                     raise ValueError(f"Invalid type {type(y_f_group_index)}")
 
+                logger.debug(
+                    "Forward checking",
+                    i=i,
+                    y_i_group=y_i_group,
+                    y_f_group=y_f_group,
+                    delta=d,
+                    actor_locations_map=actor_locations_map,
+                    objects_map=objects_map,
+                    groups=groups,
+                )
                 ############################
                 # GROUPS NEW LOCATION
                 ############################
                 new_group_loc = _get_object_transaction_OR_result(
-                    n_locs, y_i_group, y_f_group
-                )
+                    n_locs, y_i_group, y_f_group)
                 new_group_loc = new_group_loc.tolist()
                 ############################
                 # GROUP UNION
                 ############################
                 if y_i != nobody:
-                    # If y_i is not nobody, then the child group is the union of y_i_group and y_f_group
+                    # If y_i is not nobody:
+                    # then the child group is the union of y_i_group and y_f_group
                     # Note: this includes the case where y_i is nobody!
                     new_actors = list(set(y_i_group.actors + y_f_group.actors))
-                    new_objects = list(set(y_i_group.objects + y_f_group.objects))
+                    new_objects = list(
+                        set(y_i_group.objects + y_f_group.objects))
                     child_group = Group(
                         loc=new_group_loc,
                         actors=new_actors,
                         objects=new_objects,
                     )
-                # When y_i is nobody, first remove from current_y_i_group_loc the object z, then add
-                # actors and objects from y_f_group
+                # When y_i is nobody:
+                # first remove from current_y_i_group_loc the object z,
+                # then add actors and objects from y_f_group
                 elif y_i == nobody:
                     # uniques actors and objects
                     new_actors = list(set(y_i_group.actors + y_f_group.actors))
-                    new_objects = list(set(y_i_group.objects + y_f_group.objects))
+                    new_objects = list(
+                        set(y_i_group.objects + y_f_group.objects))
                     # remove z from objects
                     new_objects.remove(z)
                     child_group = Group(
