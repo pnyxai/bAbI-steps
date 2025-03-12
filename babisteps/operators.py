@@ -143,6 +143,10 @@ def generate_OR_parents(x: np.array) -> list:
             "the second half correspond to N-1 ones. Error!")
         solutions = filter_unique_parent_combinations(
             generate_parent_combinations(x), n, is_valid_parent)
+        # TODO: CHECK IF THIS IS DANGEROUS
+        # THIS CAN GENERATE "Gargantúa"
+        # PROBABLY THIS SHOULD BE SENT IN THE LAST POSITION IN EASE
+        # OF ASIGN A SPECIFIC PROBABILITY OF OCCURENCE
         nowhere_parent = ([0] * n + [1] * n, x.copy().astype(int).tolist())
         solutions.append(nowhere_parent)
         return solutions
@@ -156,16 +160,20 @@ def generate_OR_parents(x: np.array) -> list:
         "The result of first half + second half is NOT equal to all ones.")
     solutions = filter_unique_parent_combinations(
         generate_parent_combinations(x), n, is_valid_parent)
-    # Create special case where child is combination of
-    # the full nowhere parent and the child == x.
-    # Add the nowhere_parent special case
-    nowhere_parent = ([0] * n + [1] * n, x.copy().astype(int).tolist())
-    solutions.append(nowhere_parent)
     # Edge case: switch the unique 1 in first_half to 0 and generate additional parents.
     index_of_one = int(np.where(first_half == 1)[0][0])
     x_copy = x.copy()
     x_copy[index_of_one] = 0
     additional = filter_unique_parent_combinations(
         generate_parent_combinations(x_copy), n, is_valid_parent_antilocations)
-
-    return solutions + additional
+    solutions = solutions + additional
+    # Create special case where child is combination of
+    # the full nowhere parent and the child == x.
+    # Add the nowhere_parent special case
+    # TODO: CHECK IF THIS IS DANGEROUS
+    # THIS CAN GENERATE "Gargantúa"
+    # PROBABLY THIS SHOULD BE SENT IN THE LAST POSITION IN EASE
+    # OF ASIGN A SPECIFIC PROBABILITY OF OCCURENCE
+    nowhere_parent = ([0] * n + [1] * n, x.copy().astype(int).tolist())
+    solutions.append(nowhere_parent)
+    return solutions

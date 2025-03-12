@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 from sparse._dok import DOK
 
 from babisteps import logger, operators
+from babisteps.basemodels import groups as gr
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, Out, To
 from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         EntityInCoordenateState,
@@ -912,10 +913,12 @@ class ComplexTracking(BaseModel):
     shape: Optional[tuple[int, int, int]] = None
     location_to_locations_map: Optional[dict] = None
     shape_str: tuple
-    p_antilocation: float = 0.5
+    p_antilocation: float = 0.5  # Only applies in the creation of last state
     p_object_in_actor: Optional[float] = None
-    location_matrix: Optional[Any] = None
+    p_nowhere_OR: Optional[float] = None
+    method_p_nowhere_OR: Optional[Literal['fix', 'cap']] = None
     p_move_object_tx: float = 0.5
+    location_matrix: Optional[Any] = None
     state_class: Optional[State] = None
 
     @model_validator(mode="after")
@@ -942,9 +945,31 @@ class ComplexTracking(BaseModel):
         # If not defined, p_object_in_actor is set to 1/len(dim2)+1 (to consider nobody)
         if not self.p_object_in_actor:
             self.p_object_in_actor = 1 - (1 / (len(self.model.dim1) + 1))
+        return self
 
-        self.logger.info("Setting p_object_in_actor",
-                         p_object_in_actor=self.p_object_in_actor)
+    @model_validator(mode="after")
+    def check_p_nowhere_OR(self):
+        # If p_nowhere_OR is defined, method_p_nowhere_OR should be defined too
+        # and vice versa
+        if self.p_nowhere_OR and not self.method_p_nowhere_OR:
+            raise ValueError(
+                "If p_nowhere_OR is defined, method_p_nowhere_OR should be defined too"
+            )
+        if not self.p_nowhere_OR and self.method_p_nowhere_OR:
+            raise ValueError(
+                "If method_p_nowhere_OR is defined, p_nowhere_OR should be defined too"
+            )
+        return self
+
+    # function to log p values after instance creation
+    @model_validator(mode="after")
+    def log_p_values(self):
+        self.logger.info("Probability values",
+                         p_antilocation=self.p_antilocation,
+                         p_object_in_actor=self.p_object_in_actor,
+                         p_nowhere_OR=self.p_nowhere_OR,
+                         method_p_nowhere_OR=self.method_p_nowhere_OR,
+                         p_move_object_tx=self.p_move_object_tx)
         return self
 
     def load_ontology_from_topic(self) -> tuple[Callable, Callable]:
@@ -1032,6 +1057,7 @@ class ComplexTracking(BaseModel):
         This function return a random index from the location matrix given
         the boundaries: min_loc_matrix (for known locations) and max_loc_matrix
         (for unknown locations).
+        Only applies in the creation of the last state.
         """
         num_locations = self.shape[0] // 2
         if self.choice_known_location():
@@ -1542,9 +1568,47 @@ class ComplexTracking(BaseModel):
                     sparse_matrix[loc, a, -1] = 1
         s = self.state_class(am=sparse_matrix,
                              index=i,
+                             p_nowhere_OR=self.p_nowhere_OR,
+                             method_p_nowhere_OR=self.method_p_nowhere_OR,
                              verbosity=self.verbosity,
                              log_file=self.log_file)
         return s
+
+    def create_state_with_maps(self, actor_locations_map: dict,
+                               objects_map: dict):
+        """
+        Create a state with the given actor locations and objects map.
+        Args:
+        actor_locations_map (dict): A mapping of actors to a list of location indices.
+        objects_map (dict): A mapping containing:
+        Returns:
+            State: A state with the given actor and object placements represented
+                as a sparse DOK matrix.
+        """
+        sparse_matrix = DOK(shape=self.shape, dtype=np.int8, fill_value=0)
+
+        # Process actors and assign their objects based on actor_locations_map and
+        # 'actor_object' from objects_map.
+        for actor, locations in actor_locations_map.items():
+            # Get the list of objects for the actor.
+            # If none exist, then assign "nothing"
+            actor_objects = objects_map.get("actor_object", {}).get(actor, [])
+            if not actor_objects:
+                # Mark as "nothing" (i.e. using the last column with index -1)
+                for loc in locations:
+                    sparse_matrix[loc, actor, -1] = 1
+            else:
+                for loc in locations:
+                    for obj in actor_objects:
+                        sparse_matrix[loc, actor, obj] = 1
+
+        # Process objects_map for objects owned by nobody.
+        for obj, locations in objects_map.get("object_location", {}).items():
+            for loc in locations:
+                # Use the `nobody` actor index
+                sparse_matrix[loc, -1, obj] = 1
+
+        return sparse_matrix
 
     def create_new_state(
         self,
@@ -1827,6 +1891,30 @@ class ComplexTracking(BaseModel):
             axis = 2 if self.choice() else 1
             states[j] = self.create_new_state(j, states[j + 1], condition,
                                               axis)
+
+        groups, actor_locations_map, objects_map, i, e = gr._get_forward(
+            states=states,
+            deltas=self.deltas,
+            n_locs=self.shape[0],
+            nobody=self.shape[1] - 1,
+            logger=self.logger,
+        )
+
+        if isinstance(e, Exception):
+            self.logger.error("FORWARD PASS",
+                              error=e,
+                              groups=groups,
+                              actor_locations_map=actor_locations_map,
+                              objects_map=objects_map,
+                              i=i)
+            raise e
+        else:
+            am = self.create_state_with_maps(actor_locations_map, objects_map)
+            if condition(am):
+                self.logger.info("Forward pass OK")
+            else:
+                self.logger.error("Forward pass failed")
+                raise ValueError("Forward pass failed")
 
         return states
 
