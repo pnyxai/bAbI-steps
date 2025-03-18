@@ -1,0 +1,11 @@
+task_name: complextracking
+objects: 10
+actors: 6
+locations: 3
+gen_kwargs:
+  #p_antilocation: 0.5
+  #p_object_in_actor: 0
+  #p_nowhere_OR: 0.1
+  #method_p_nowhere_OR: 'cap'
+  #p_move_object_tx: 0.5
+func: utils._get_generators

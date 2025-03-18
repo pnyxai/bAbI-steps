@@ -13,6 +13,8 @@ structlog = "^24.4.0"
 scipy = "^1.15.1"
 numba = "^0.60.0"
 sparse = "^0.15.5"
+pyyaml = "^6.0.2"
+datasets = "^3.4.0"
 
 
 [tool.poetry.group.dev.dependencies]
