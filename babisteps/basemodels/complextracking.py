@@ -35,7 +35,7 @@ class ObjectInLocationPolar(ComplexTrackingRequest):
     d2: Optional[Any] = None
 
     def get_question(self):
-        return f"Is {self.d2.name} in the {self.d0.name}?"
+        return f"Is the {self.d2.name} in the {self.d0.name}?"
 
     def get_answer(self):
         return self.answer
@@ -67,7 +67,7 @@ class ObjectInLocationWhere(ComplexTrackingRequest):
     d2: Optional[Any] = None
 
     def get_question(self):
-        return f"Where is {self.d2.name}?"
+        return f"Where is the {self.d2.name}?"
 
     def get_answer(self):
         if self.answer == "designated_location":
@@ -1268,7 +1268,7 @@ class ComplexTracking(BaseGenerator):
                     anti_loc = absolute_nowhere[0]
                     if loc != absolute_nowhere:
                         if loc[0] < absolute_nowhere[0]:
-                            # this  is known known location!
+                            # this is known known location!
                             loc = loc[0]
                             sentences.append(
                                 In(
@@ -1298,7 +1298,7 @@ class ComplexTracking(BaseGenerator):
                             self.dim0_idx_to_obj,
                             (self.shape_str[0], self.shape_str[1])))
                     # Objects with owner
-                    if a in state.objects_map:
+                    if a in state.objects_map['actor_object']:
                         for o in state.objects_map['actor_object'][a]:
                             if o != nothing_object:
                                 state_sentences.append(

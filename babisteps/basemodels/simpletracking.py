@@ -42,7 +42,7 @@ class ActorInLocationWho(SimpleTrackerRequest):
     answer: Literal["designated_entity", "none", "unknown"]
 
     def get_question(self):
-        return f"Who is in {self.coordenate.name}?"
+        return f"Who is in the {self.coordenate.name}?"
 
     def get_answer(self):
         if self.answer == "designated_entity":
