@@ -1,0 +1,39 @@
+task_path: "babisteps/tasks/commons.yaml"
+max_retries: 15
+num_samples_by_task: 2
+verbosity: "INFO"
+# SimpleTracking and ComplexTracking
+states_qty: 15
+locations:
+  - "bathroom"
+  - "kitchen"
+  - "living room"
+  - "bedroom"
+  - "garage"
+  - "office"
+  - "garden"
+  - "park"
+  - "store"
+  - "street"
+actors:
+  - "ana"
+  - "bob"
+  - "charlie"
+  - "david"
+  - "eve"
+  - "frank"
+  - "grace"
+  - "henry"
+  - "ivy"
+  - "jack"
+objects:
+  - "pencil"
+  - "book"
+  - "lighter"
+  - "apple"
+  - "key"
+  - "phone"
+  - "wallet"
+  - "notebook"
+  - "cup"
+  - "spoon"

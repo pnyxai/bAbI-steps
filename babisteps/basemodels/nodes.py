@@ -96,7 +96,7 @@ class EntityInCoordenateState(State):
     def get_entities_in_coodenate(self, coordenate: int):
         entities = []
         entities = self.am[coordenate, :] == 1
-        entities = [int(key[1]) for key in entities.data]
+        entities = [int(key[0]) for key in entities.data]
         return entities
 
     def validate_next(self, next_am):

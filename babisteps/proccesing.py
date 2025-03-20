@@ -3,43 +3,51 @@ import os
 import shutil
 from copy import deepcopy
 from pathlib import Path
-from typing import get_args, Optional
+from typing import Optional, get_args
 
-from babisteps.basemodels.generators import (ActorInLocationPolar,
-                                             ActorInLocationWhere,
-                                             ActorInLocationWho,
-                                             ActorWithObjectPolar,
-                                             ActorWithObjectWhat,
-                                             ActorWithObjectWho,
-                                             ComplexTracking,
-                                             EntitiesInCoordenates,
-                                             ObjectInLocationPolar,
-                                             ObjectInLocationWhat,
-                                            ObjectInLocationWhere,
-                                             ObjectsInLocation, SimpleTracker)
+from babisteps.basemodels.complextracking import (ComplexTracking,
+                                                  ObjectInLocationPolar,
+                                                  ObjectInLocationWhat,
+                                                  ObjectInLocationWhere,
+                                                  ObjectsInLocation)
 from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.basemodels.simpletracking import (ActorInLocationPolar,
+                                                 ActorInLocationWhere,
+                                                 ActorInLocationWho,
+                                                 ActorWithObjectPolar,
+                                                 ActorWithObjectWhat,
+                                                 ActorWithObjectWho,
+                                                 EntitiesInCoordenates,
+                                                 SimpleTracker)
 from babisteps.utils import simple_parse_args_string
 
 
-def prepare_path(path: Path, folder_name: str, logger):
+def prepare_path(path: Path, folder_name: str, logger=None):
     # Define the folder path
     folder_path = path / folder_name  # Assuming `path` is a Path object
     # Check if the folder exists
     if folder_path.exists():
-        logger.info("Clearing content", folder=folder_path)
+        if logger:  # Only log if logger is provided
+            logger.info("Clearing content", folder=folder_path)
 
         # Remove all contents inside the folder
         for item in folder_path.iterdir():
             if item.is_file() or item.is_symlink():
-                logger.info("Deleting file", file=item)
+                if logger:  # Only log if logger is provided
+                    logger.info("Deleting file", file=item)
                 item.unlink()  # Remove file or symlink
             elif item.is_dir():
-                logger.info("Deleting folder and its contents", folder=item)
+                if logger:  # Only log if logger is provided
+                    logger.info("Deleting folder and its contents",
+                                folder=item)
                 shutil.rmtree(item)  # Remove directory and its contents
     else:
-        logger.info("Folder does not exist. Creating it.", folder=folder_path)
+        if logger:  # Only log if logger is provided
+            logger.info("Folder does not exist. Creating it.",
+                        folder=folder_path)
         folder_path.mkdir(parents=True, exist_ok=True)
-    logger.info("Folder is now ready for use.", folder=folder_path)
+    if logger:  # Only log if logger is provided
+        logger.info("Folder is now ready for use.", folder=folder_path)
     return folder_path
 
 
@@ -61,10 +69,14 @@ def save_as_jsonl(json_list,
             for obj in json_list:
                 f.write(json.dumps(obj) +
                         "\n")  # Write each JSON object on a new line
-        logger.info("Saved JSONL", file_path=file_path)  # Print confirmation
+        if logger:
+            logger.info("Saved JSONL",
+                        file_path=file_path)  # Print confirmation
     except Exception as e:
-        logger.error("Error saving JSONL", error=str(e))
+        if logger:
+            logger.error("Error saving JSONL", error=str(e))
         raise e
+    return file_path
 
 
 def save_as_txt(text: str, folder_path: Path, logger, filename="output.txt"):
@@ -79,9 +91,12 @@ def save_as_txt(text: str, folder_path: Path, logger, filename="output.txt"):
         file_path = folder_path / filename  # Construct full file path
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(text)
-        logger.info("Saved .txt", file_path=file_path)  # Print confirmation
+        if logger:
+            logger.info("Saved .txt",
+                        file_path=file_path)  # Print confirmation
     except Exception as e:
-        logger.error("Error saving .txt", error=str(e))
+        if logger:
+            logger.error("Error saving .txt", error=str(e))
         raise e
 
 
@@ -96,7 +111,7 @@ def create_simpletracking(
     path: Path,
     verbosity,
     logger,
-    gen_kwargs: Optional[str] = None,    
+    gen_kwargs: Optional[str] = None,
 ):
 
     if gen_kwargs is not None:
@@ -181,7 +196,7 @@ def create_complextracking(
     logger,
     gen_kwargs: Optional[str] = None,
 ):
-    
+
     if gen_kwargs is not None:
         gen_kwargs = simple_parse_args_string(gen_kwargs)
         if gen_kwargs == "":
@@ -212,7 +227,8 @@ def create_complextracking(
 
     jsonl_dataset = []
     txt_dataset = ""
-    max_retries = gen_kwargs.get("max_retries", 10) if gen_kwargs is not None else 10
+    max_retries = gen_kwargs.get("max_retries",
+                                 10) if gen_kwargs is not None else 10
     for s in range(q_stories):
         logger.info("Creating story", story=s)
         retries = 0
@@ -245,3 +261,20 @@ def create_complextracking(
         txt_dataset += txt
     logger.info("End of stories creation")
     return jsonl_dataset, txt_dataset, folder_path
+
+
+def _run_generation(g, yaml_cfg):
+    retries = 0
+    while retries < yaml_cfg["max_retries"]:
+        try:
+            g.generate()
+            break
+        except Exception as _:
+            g = g.recreate()
+            retries += 1
+    if retries >= yaml_cfg["max_retries"]:
+        raise Exception("Max retries reached. Skipping story")
+
+    json = g.get_json()
+    txt = g.get_txt()
+    return json, txt
