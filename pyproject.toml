@@ -15,6 +15,7 @@ numba = "^0.60.0"
 sparse = "^0.15.5"
 pyyaml = "^6.0.2"
 datasets = "^3.4.0"
+networkx = {extras = ["default"], version = "^3.4.2"}
 
 
 [tool.poetry.group.dev.dependencies]
@@ -23,6 +24,7 @@ toml = "0.10.2"
 tomli = "2.2.1"
 ruff = "0.9.1"
 isort = "5.13.2"
+pygraphviz = "^1.14"
 
 [tool.ruff]
 # Allow lines to be as long as 80.
