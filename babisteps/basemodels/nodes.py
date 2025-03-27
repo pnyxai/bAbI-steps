@@ -4,6 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Literal, Optional, Union
 
+import networkx as nx
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sparse._sparse_array import SparseArray
@@ -32,6 +33,20 @@ class State(BaseModel):
         return self
 
 
+class ImmediateGraph(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    am: SparseArray
+    g: nx.DiGraph
+    name: str
+    index: int
+
+    @model_validator(mode="after")
+    def _is_DAG(self):
+        if not nx.is_directed_acyclic_graph(self.g):
+            raise ValueError("The graph must be a Directed Acyclic Graph")
+        return self
+
+
 class Entity(BaseModel):
     name: str
 
@@ -44,6 +59,23 @@ class Coordenate(BaseModel):
 
     def __hash__(self):
         return hash(self.name)
+
+
+class Relationship(BaseModel):
+    name: str
+    r0: Optional[str] = None
+    r1: Optional[str] = None
+
+    def __hash__(self):
+        return hash(self.name)
+
+    @model_validator(mode="after")
+    def _split_name(self):
+        # validate that the name is in the form of "<r1>-<r2>"
+        if "-" not in self.name:
+            raise ValueError("The name must be in the form of '<r1>-<r2>'")
+        self.r0, self.r1 = self.name.split("-")
+        return self
 
 
 class EntityInCoordenateState(State):
