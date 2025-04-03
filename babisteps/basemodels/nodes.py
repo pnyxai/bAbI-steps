@@ -63,19 +63,12 @@ class Coordenate(BaseModel):
 
 class Relationship(BaseModel):
     name: str
-    r0: Optional[str] = None
-    r1: Optional[str] = None
+    base: list[str]
+    opposite: list[str]
+    relation_type: str
 
     def __hash__(self):
         return hash(self.name)
-
-    @model_validator(mode="after")
-    def _split_name(self):
-        # validate that the name is in the form of "<r1>-<r2>"
-        if "-" not in self.name:
-            raise ValueError("The name must be in the form of '<r1>-<r2>'")
-        self.r0, self.r1 = self.name.split("-")
-        return self
 
 
 class EntityInCoordenateState(State):

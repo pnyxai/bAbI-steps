@@ -155,7 +155,7 @@ class SimpleTracker(BaseGenerator):
     idx2c: Optional[dict] = None
     c2idx: Optional[dict] = None
     shape: Optional[tuple[int, int]] = None
-    shape_str: Literal[("Location", "Actor"), ("Actor", "Object")]
+    shape_str: Literal[("locations", "actors"), ("actors", "objects")]
 
     @model_validator(mode="after")
     def check_shape_and_model(self):

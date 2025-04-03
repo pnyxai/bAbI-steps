@@ -1,6 +1,6 @@
 import random
 from copy import deepcopy
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal, Optional, get_type_hints
 
 import networkx as nx
 import numpy as np
@@ -8,20 +8,23 @@ from pydantic import BaseModel, model_validator
 from sparse._dok import DOK
 from sparse._sparse_array import SparseArray
 
+from babisteps.basemodels.FOL import FOL, Exists, IsRelated
 from babisteps.basemodels.generators import BaseGenerator
 from babisteps.basemodels.nodes import Entity, ImmediateGraph, Relationship
+from babisteps.basemodels.stories import Story
 
 
 class ImmediateOrderRequest(BaseModel):
     answer: Any
-    # Event
+    # Entity
     e0: Optional[Any] = None
     e1: Optional[Any] = None
     # Relation
-    r0: Optional[Any] = None
-    r1: Optional[Any] = None
-    relation_type: Literal["relative_event", "relative_size",
-                           "relative_position", "absolute_position"]
+    r: Optional[Any] = None
+    relation_type: Literal['relative_event', 'relative_size',
+                           'relative_position', 'absolute_position']
+    shape_str: Literal[("locations", ), ("actors", ), ("objects", ),
+                       ("events", )]
 
     def get_question(self):
         pass
@@ -34,7 +37,18 @@ class ImmediateOrderRequestPolar(ImmediateOrderRequest):
     answer: Literal["yes", "no", "unknown"]
 
     def get_question(self):
-        return f"Is {self.e0.name} {self.r0} {self.e1.name}?"
+
+        if self.shape_str in [("locations", ), ("objects", )]:
+            return (f"Is the {self.e0.name} {random.choice(self.r.base)} "
+                    f"the {self.e1.name}?")
+        elif self.shape_str == ("actors", ):
+            return f"Is {self.e0.name} {random.choice(self.r.base)} {self.e1.name}?"
+        elif self.shape_str == ("events", ):
+            return (f"Was the {self.e0.name} {random.choice(self.r.base)} "
+                    f"the {self.e1.name}?")
+        else:
+            raise ValueError(
+                "Invalid shape_str for ImmediateOrderRequestPolar")
 
     def get_answer(self):
         return self.answer
@@ -97,6 +111,10 @@ class ImmediateOrder(BaseGenerator):
     topic: ImmediateOrderRequest
     # shape is a tuple of multiple integers
     shape: Optional[tuple[int]] = None
+    shape_str: Optional[tuple[str]] = None
+    story: Optional[Story] = None
+    fol: list[FOL] = None
+    nl: list[str] = None
 
     @model_validator(mode="before")
     def _validate_edge_qty(cls, values):
@@ -131,18 +149,27 @@ class ImmediateOrder(BaseGenerator):
                 g.add_edge(i, j)
         return matrix, g
 
-    def _fill_edges(self, matrix: SparseArray, g: nx.DiGraph, n: int):
+    def _fill_edges(self,
+                    matrix: SparseArray,
+                    g: nx.DiGraph,
+                    n: int,
+                    condition: Optional[Callable] = None):
         nans = np.argwhere(np.isnan(matrix.todense()))
         while len(nans) > 0:
             c = np.random.choice(len(nans))
             c = nans[c]
             i, j = int(c[0]), int(c[1])
+
             matrix_aux = deepcopy(matrix)
             g_aux = deepcopy(g)
             matrix_aux[i, j] = 1
             matrix_aux[j, i] = 0
             g_aux.add_edge(i, j)
             matrix_aux, g_aux = self._transitive_closure(matrix_aux, g_aux)
+            # if condition is not none, check it
+            if condition and not condition(matrix_aux, g_aux):
+                matrix[i, j] = 0
+                continue
             if len(g_aux.edges) == n:
                 return matrix_aux, g_aux
             elif len(g_aux.edges) < n:
@@ -156,12 +183,13 @@ class ImmediateOrder(BaseGenerator):
 
     def _create_aux(self):
         self.shape = (len(self.model.relations), len(self.model.entities))
+        self.shape_str = self.topic.shape_str
 
     def _create_empty_graph(self):
         g_am = DOK((self.shape[1], self.shape[1]), fill_value=np.nan)
         g = nx.DiGraph()
         for i, e in enumerate(self.model.entities):
-            g_am[i, i] = 0
+            g_am[i, i] = 0  # diagonal is 0
             g.add_node(i, entity=e)
         return g_am, g
 
@@ -172,7 +200,9 @@ class ImmediateOrder(BaseGenerator):
         self._create_aux()
         self.topic.e0 = e0
         self.topic.e1 = e1
+        self.topic.r = self.model.relations[0]
         r_am, r = self._create_empty_graph()
+        condition = None  # Re-defined only in the unknown case
         if self.topic.answer == "yes":
             r_am[0, 1] = 1
             r_am[1, 0] = 0
@@ -184,7 +214,18 @@ class ImmediateOrder(BaseGenerator):
         elif self.topic.answer == "unknown":
             r_am[0, 1] = 0
             r_am[1, 0] = 0
-        r_am, r = self._fill_edges(r_am, r, self.edge_qty)
+            # validate that both 0,1 and 1,0 are not in the graph
+            #condition = lambda r_am, r: (r_am[0, 1] == 0 and r_am[1, 0] == 0) and /
+            # (not r.has_edge(0, 1) and not r.has_edge(1, 0))
+            condition = lambda r_am, r: not r.has_edge(
+                0, 1) and not r.has_edge(1, 0)
+
+        self.logger.debug("Creating Immediate Order Graph",
+                          answer=self.topic.answer,
+                          e0=e0.name,
+                          e1=e1.name,
+                          relation=self.topic.r.name)
+        r_am, r = self._fill_edges(r_am, r, self.edge_qty, condition)
         graphs.append(
             ImmediateGraph(am=r_am,
                            g=r,
@@ -234,11 +275,80 @@ class ImmediateOrder(BaseGenerator):
                     ImmediateGraph(am=g_am, g=g, name=rlt.name, index=i))
         return graphs
 
+    def create_fol(self):
+
+        def enumerate_model(element: list, shape_type: str) -> list[list]:
+            enumeration = []
+            for e in element:
+                enumeration.append(Exists(thing=e, shape_str=shape_type))
+            return enumeration
+
+        def describe_relation(relation, graph, shape_str):
+            graph_sentences = []
+            for (i, j) in graph.am.data:
+                # check first am
+                edge = graph.am[i, j]
+                if edge == 1:
+                    # then verify if the edge exists in the graph
+                    assert graph.g.has_edge(
+                        i, j), "edge {}-{} does not exist in the graph".format(
+                            i, j)
+                    graph_sentences.append(
+                        IsRelated(relation=relation,
+                                  entity0=self.model.entities[i],
+                                  entity1=self.model.entities[j],
+                                  shape_str=shape_str))
+            return graph_sentences
+
+        world_enumerate = []
+        story = []
+
+        for t, dim_str in zip(self.model.as_tuple, self.shape_str):
+
+            world_enumerate.extend(enumerate_model(t, dim_str))
+        random.shuffle(world_enumerate)
+
+        for relation, graph in zip(self.model.relations, self.graphs):
+            story.extend(describe_relation(relation, graph, self.shape_str))
+        random.shuffle(story)
+
+        self.story = Story(
+            world_enumerate=world_enumerate,
+            describe_len=0,
+            story=story,
+            question=self.topic.get_question(),
+            answer=self.topic.get_answer(),
+        )
+
+        self.fol = world_enumerate + story
+
+    def create_nl(self):
+        self.nl = [f.to_nl() for f in self.fol]
+
     def generate(self):
         self.create_ontology()
+        self.create_fol()
 
     def get_json(self):
-        return
+        json = self.story.create_json()
+        choices = list(get_type_hints(self.topic)['answer'].__args__)
+        if isinstance(self.topic, ImmediateOrderRequestPolar):
+            # do nothing
+            pass
+        elif isinstance(self.topic, ImmediateOrderRequestHow):
+            choices.remove('designated_relation')
+            choices.extend([r.name for r in self.model.relations])
+        elif isinstance(self.topic, ImmediateOrderRequestWhat):
+            choices.remove('second_designated_event')
+            choices.extend([e.name for e in self.model.entities])
+
+        random.shuffle(choices)
+        json['choices'] = choices
+        if self.name:
+            json['leaf'] = self.name.split('_-_')[0]
+            json['leaf_label'] = self.name.split('_-_')[1]
+            json['leaf_index'] = self.name.split('_-_')[2]
+        return json
 
     def get_txt(self):
-        return
+        return self.story.create_txt()

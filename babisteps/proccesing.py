@@ -128,7 +128,7 @@ def create_simpletracking(
             "who": ActorInLocationWho,
             "where": ActorInLocationWhere,
         }
-        shape_str = ("Location", "Actor")
+        shape_str = ("locations", "actors")
         entities = [Entity(name=entity) for entity in actors]
         coordenates = [Coordenate(name=coordenate) for coordenate in locations]
         model = EntitiesInCoordenates(entities=entities,
@@ -139,7 +139,7 @@ def create_simpletracking(
             "what": ActorWithObjectWhat,
             "who": ActorWithObjectWho,
         }
-        shape_str = ("Actor", "Object")
+        shape_str = ("actors", "objects")
         entities = [Entity(name=entity) for entity in objects]
         coordenates = [Coordenate(name=coordenate) for coordenate in actors]
         model = EntitiesInCoordenates(entities=entities,
@@ -208,7 +208,7 @@ def create_complextracking(
         "what": ObjectInLocationWhat,
         "where": ObjectInLocationWhere,
     }
-    shape_str = ("Location", "Actor", "Object")
+    shape_str = ("locations", "actors", "objects")
     d0 = [Coordenate(name=coordenate) for coordenate in locations]
     d1 = [Coordenate(name=entity) for entity in actors]
     d2 = [Entity(name=entity) for entity in objects]

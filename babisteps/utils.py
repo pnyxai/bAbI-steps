@@ -244,4 +244,12 @@ def create_task_path_dict(task_names: list[str], task_folders: list[Path],
                                 f"The task_name in the yaml file {yaml_path} is "
                                 f"different from the folder name {folder.name}"
                             )
+                    else:
+                        logger.error(
+                            "config.yaml not found in task folder",
+                            task_name=task_name,
+                            folder_path=folder,
+                        )
+                        raise ValueError(
+                            f"config.yaml not found in task folder {folder}")
     return task_path_dict
