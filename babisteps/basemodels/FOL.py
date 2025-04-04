@@ -1,15 +1,18 @@
 import random
+from abc import ABC, abstractmethod
 from typing import Union
 
 from pydantic import BaseModel
 
-from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.basemodels.nodes import Coordenate, Entity, Relationship
 
 
-class FOL(BaseModel):
+class FOL(BaseModel, ABC):
     shape_str: tuple
 
+    @abstractmethod
     def to_nl(self):
+        """Abstract method to be implemented in subclasses."""
         pass
 
 
@@ -18,12 +21,16 @@ class Exists(FOL):
     shape_str: str
 
     def to_nl(self):
-        if self.shape_str == "Location":
+        if self.shape_str == "locations":
             return f"There is a {self.thing.name}."
-        elif self.shape_str == "Actor":
+        elif self.shape_str == "actors":
             return f"{self.thing.name} is present."
-        elif self.shape_str == "Object":
+        elif self.shape_str == "objects":
             return f"There is a {self.thing.name}."
+        elif self.shape_str == "events":
+            return f"There was a {self.thing.name}."
+        else:
+            raise ValueError("Invalid type for Exists relation")
 
 
 class In(FOL):
@@ -33,11 +40,11 @@ class In(FOL):
     def to_nl(self) -> str:
         e, c = self.entity.name, self.coordenate.name
 
-        if self.shape_str == ("Location", "Actor"):
+        if self.shape_str == ("locations", "actors"):
             return f"{e} is in the {c}."
-        elif self.shape_str == ("Location", "Object"):
+        elif self.shape_str == ("locations", "objects"):
             return f"The {e} is in the {c}."
-        elif self.shape_str == ("Actor", "Object"):
+        elif self.shape_str == ("actors", "objects"):
             options = [
                 f"{c} has the {e}.",
                 f"{c} is carrying the {e}.",
@@ -54,7 +61,7 @@ class To(FOL):
     def to_nl(self) -> str:
         e, c = self.entity.name, self.coordenate.name
 
-        if self.shape_str == ("Location", "Actor"):
+        if self.shape_str == ("locations", "actors"):
             options = [
                 f"{e} went to the {c}.",
                 f"{e} traveled to the {c}.",
@@ -64,7 +71,7 @@ class To(FOL):
             ]
             return random.choice(options)
 
-        elif self.shape_str == ("Object", "Location"):
+        elif self.shape_str == ("objects", "locations"):
             options = [
                 f"The {e} was carried to the {c}.",
                 f"The {e} was taken to the {c}.",
@@ -72,7 +79,7 @@ class To(FOL):
             ]
             return random.choice(options)
 
-        elif self.shape_str == ("Actor", "Object"):
+        elif self.shape_str == ("actors", "objects"):
             options = [
                 f"{c} took the {e}.",
                 f"{c} grabbed the {e}.",
@@ -89,14 +96,14 @@ class From(FOL):
 
     def to_nl(self) -> str:
         e, c = self.entity.name, self.coordenate.name
-        if self.shape_str == ("Location", "Actor"):
+        if self.shape_str == ("locations", "actors"):
             options = [
                 f"{e} left the {c}.",
                 f"{e} abandoned the {c}.",
             ]
             return random.choice(options)
 
-        elif self.shape_str == ("Object", "Location"):
+        elif self.shape_str == ("objects", "locations"):
             options = [
                 f"The {e} was carried from the {c}.",
                 f"The {e} was taken from the {c}.",
@@ -104,7 +111,7 @@ class From(FOL):
             ]
             return random.choice(options)
 
-        elif self.shape_str == ("Actor", "Object"):
+        elif self.shape_str == ("actors", "objects"):
             options = [
                 f"{c} left the {e}.",
                 f"{c} dropped the {e}.",
@@ -127,7 +134,7 @@ class FromTo(FOL):
             self.coordenate2.name,
         )
 
-        if self.shape_str == ("Location", "Actor"):
+        if self.shape_str == ("locations", "actors"):
             options = [
                 f"{e} went from the {c1} to the {c2}.",
                 f"{e} traveled from the {c1} to the {c2}.",
@@ -137,14 +144,14 @@ class FromTo(FOL):
             ]
             return random.choice(options)
 
-        elif self.shape_str == ("Object", "Location"):
+        elif self.shape_str == ("objects", "locations"):
             options = [
                 f"The {e} was carried from the {c1} to the {c2}.",
                 f"The {e} was taken from the {c1} to the {c2}.",
                 f"The {e} was moved from the {c1} to the {c2}.",
             ]
             return random.choice(options)
-        elif self.shape_str == ("Actor", "Object"):
+        elif self.shape_str == ("actors", "objects"):
             options = [
                 f"{c1} gave the {e} to {c2}.",
                 f"{c1} passed the {e} to {c2}.",
@@ -162,16 +169,48 @@ class Out(FOL):
     def to_nl(self) -> str:
         e, c = self.entity.name, self.coordenate.name
 
-        if self.shape_str == ("Location", "Actor"):
+        if self.shape_str == ("locations", "actors"):
             options = [
                 f"{e} is away from the {c}.",
                 f"{e} is outside of the {c}.",
             ]
             return random.choice(options)
 
-        elif self.shape_str == ("Location", "Object"):
+        elif self.shape_str == ("locations", "objects"):
             options = [
                 f"The {e} is away from the {c}.",
                 f"The {e} is outside of the {c}.",
             ]
             return random.choice(options)
+
+
+class IsRelated(FOL):
+    relation: Relationship
+    entity0: Union[Entity]
+    entity1: Union[Entity]
+
+    def to_nl(self):
+        e0, e1 = self.entity0.name, self.entity1.name
+        if self.shape_str in [("locations", ), ("objects", )]:
+            # chose if use base or opposite relation
+            options = [
+                f"The {e0} is {random.choice(self.relation.base)} the {e1}.",
+                f"The {e1} is {random.choice(self.relation.opposite)} the {e0}.",
+            ]
+            return random.choice(options)
+        elif self.shape_str == ("actors", ):
+            # chose if use base or opposite relation
+            options = [
+                f"{e0} is {random.choice(self.relation.base)} {e1}.",
+                f"{e1} is {random.choice(self.relation.opposite)} {e0}.",
+            ]
+            return random.choice(options)
+        elif self.shape_str == ("events", ):
+            # chose if use base or opposite relation
+            options = [
+                f"The {e0} was {random.choice(self.relation.base)} the {e1}.",
+                f"The {e1} was {random.choice(self.relation.opposite)} the {e0}.",
+            ]
+            return random.choice(options)
+        else:
+            raise ValueError("Invalid types for IsRelated relation")

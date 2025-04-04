@@ -69,7 +69,7 @@ def create_babisteps_dataset(dataset_path: Path, jsonl_path_dict: dict,
                     os.path.join(dataset_path, "data", folder_name,
                                  f"{folder_name}-{split}.parquet"))
                 config_lines.append(_craete_config_yaml(folder_name, split))
-        print("config_lines", config_lines)
+
         # Write config lines
         for line in config_lines:
             f.write(line)

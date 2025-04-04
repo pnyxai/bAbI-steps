@@ -61,7 +61,7 @@ def _get_generators(**kwargs):
                         ActorInLocationWho,
                         ActorInLocationWhere,
                 ]:
-                    shape_str = ("Location", "Actor")
+                    shape_str = ("locations", "actors")
                     entities_g = np.random.choice(total_actors,
                                                   size=n_entities,
                                                   replace=False).tolist()
@@ -73,7 +73,7 @@ def _get_generators(**kwargs):
                         ActorWithObjectWhat,
                         ActorWithObjectWho,
                 ]:
-                    shape_str = ("Actor", "Object")
+                    shape_str = ("actors", "objects")
                     entities_g = np.random.choice(total_objects,
                                                   size=n_entities,
                                                   replace=False).tolist()

@@ -1328,13 +1328,13 @@ class ComplexTracking(BaseGenerator):
                 (1, 0): (
                     self.dim1_idx_to_obj,
                     self.dim0_idx_to_obj,
-                    ("Location", "Actor"),
+                    ("locations", "actors"),
                     self.uncertainty[0],
                 ),
                 (2, 1): (
                     self.dim2_idx_to_obj,
                     self.dim1_idx_to_obj,
-                    ("Actor", "Object"),
+                    ("actors", "objects"),
                     self.uncertainty[1],
                 ),
             }
@@ -1418,7 +1418,7 @@ class ComplexTracking(BaseGenerator):
         for t, dim_str in zip(self.model.as_tuple, self.shape_str):
             if isinstance(self.topic,
                           (ObjectInLocationWhat,
-                           ObjectInLocationWhere)) and dim_str == "Location":
+                           ObjectInLocationWhere)) and dim_str == "locations":
                 world_enumerate.extend(
                     enumerate_model(t[:self.shape[0] // 2], dim_str))
             else:

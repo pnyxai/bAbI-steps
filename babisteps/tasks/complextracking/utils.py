@@ -40,7 +40,7 @@ def _get_generators(**kwargs):
     folder_name = yaml_cfg["task_name"]
     folder_path = prepare_path(output_path, folder_name)
     log_file = os.path.join(folder_path, "logs.txt")
-    shape_str = ("Location", "Actor", "Object")
+    shape_str = ("locations", "actors", "objects")
     n_locations = yaml_cfg.get("locations")
     n_actors = yaml_cfg.get("actors")
     n_objects = yaml_cfg.get("objects")

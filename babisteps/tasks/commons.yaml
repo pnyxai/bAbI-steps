@@ -1,9 +1,10 @@
 task_path: "babisteps/tasks/commons.yaml"
 max_retries: 15
-num_samples_by_task: 2
+num_samples_by_task: 10
 verbosity: "INFO"
 # SimpleTracking and ComplexTracking
-states_qty: 15
+states_qty: 16
+edges_qty: 6
 locations:
   - "bathroom"
   - "kitchen"
@@ -37,3 +38,85 @@ objects:
   - "notebook"
   - "cup"
   - "spoon"
+events:
+  - "party"
+  - "christmas"
+  - "wedding"
+  - "funeral"
+  - "birthday"
+  - "concert"
+  - "festival"
+  - "conference" 
+relations:
+  big:
+    base:
+    - bigger than
+    - larger than
+    - greater than
+    opposite:
+    - smaller than
+    - tinier than
+    type: relative_size
+  right:
+    base:
+    - right of
+    - to the right of
+    opposite:
+    - left of
+    - to the left of
+    type: relative_position
+  ahead:
+    base:
+    - in front of
+    - ahead of
+    opposite:
+    - behind
+    type: relative_position
+  above:
+    base:
+    - above
+    - over
+    opposite:
+    - below
+    - under
+    type: relative_position
+  south:
+    base:
+    - south of
+    - to the south of
+    opposite:
+    - north of
+    - to the north of
+    type: absolute_position
+  east:
+    base:
+    - east of
+    - to the east of
+    opposite:
+    - west of
+    - to the west of
+    type: absolute_position
+  before:
+    base:
+    - before
+    - earlier than
+    - previous to
+    - prior to
+    opposite:
+    - after
+    - later than
+    type: relative_event
+relation_types_compatibility:
+  relative_event:
+    - relative_event
+    - absolute_position
+  relative_size:
+    - relative_size
+    - relative_position
+    - absolute_position
+  absolute_position:
+    - absolute_position
+    - relative_size
+  relative_position:
+    - relative_position
+    - relative_size

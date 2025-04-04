@@ -1,0 +1,5 @@
+task_name: immediateorder
+relations_qty: 3
+entities: 8
+gen_kwargs:
+func: utils._get_generators
