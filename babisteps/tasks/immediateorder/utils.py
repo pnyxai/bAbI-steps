@@ -173,8 +173,8 @@ def _get_generators(**kwargs):
                     relation_types_compatibility,
                 )
                 # Get entities compatible with the selected relation type
-                entitie_type = random.choice(relations_type_to_entities_dict[r_type_g])
-                local_entities = kwargs.get(entitie_type)
+                entity_type = random.choice(relations_type_to_entities_dict[r_type_g])
+                local_entities = kwargs.get(entity_type)
                 entities = np.random.choice(
                     local_entities, size=n_entities, replace=False
                 ).tolist()
