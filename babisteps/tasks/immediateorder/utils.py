@@ -8,13 +8,9 @@ from typing import get_type_hints
 import numpy as np
 import yaml
 
-from babisteps.basemodels.immediateorder import (
-    ImmediateOrder,
-    ImmediateOrderModel,
-    ImmediateOrderRequestHow,
-    ImmediateOrderRequestPolar,
-    ImmediateOrderRequestWhat,
-)
+from babisteps.basemodels.immediateorder import (ImmediateOrder,
+                                                 ImmediateOrderModel,
+                                                 ImmediateOrderRequestPolar)
 from babisteps.basemodels.nodes import Entity, Relationship
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
@@ -38,11 +34,12 @@ def _get_relations_by_type(relations: dict):
     """
     Return a dictionary mapping each relation type to a list of relation.
     Parameters:
-        relations (dict): A dictionary where each key is a relation identifier and each value
-                                is a dictionary containing at least a "type" key that indicates the
-                                type of the relation.
+        relations (dict): A dictionary where each key is a relation identifier and each
+         value is a dictionary containing at least a "type" key that indicates the 
+         type of the relation.
     Returns:
-        relations_by_type: A dictionary where each key is a unique relation type found in relations and each
+        relations_by_type: A dictionary where each key is a unique relation type found
+        in relations and each
               value is a list of relation identifiers that have that type.
     """
 
@@ -98,10 +95,8 @@ def _get_list_relations(
     compatible_types = deepcopy(relation_types_compatibility[relation_type])
 
     # Handle mutually exclusive relation types
-    if (
-        "relative_position" in compatible_types
-        and "absolute_position" in compatible_types
-    ):
+    if ("relative_position" in compatible_types
+            and "absolute_position" in compatible_types):
         to_remove = random.choice(["relative_position", "absolute_position"])
         compatible_types.remove(to_remove)
 
@@ -119,8 +114,7 @@ def _get_list_relations(
         available = len(compatible_relations) + 1
         raise ValueError(
             f"Not enough compatible relations. Requested {relations_qty} "
-            f"but only {available} available."
-        )
+            f"but only {available} available.")
 
     # Select additional relations
     for _ in range(relations_qty - 1):
@@ -162,8 +156,7 @@ def _get_generators(**kwargs):
                 gen_kwargs = yaml_cfg["gen_kwargs"]
                 # Pick a random relation type
                 r_type_g = random.choice(
-                    list(get_type_hints(leaf)["relation_type"].__args__)
-                )
+                    list(get_type_hints(leaf)["relation_type"].__args__))
                 # Get relations compatible with the selected type
                 relations = _get_list_relations(
                     r_type_g,
@@ -173,21 +166,23 @@ def _get_generators(**kwargs):
                     relation_types_compatibility,
                 )
                 # Get entities compatible with the selected relation type
-                entity_type = random.choice(relations_type_to_entities_dict[r_type_g])
+                entity_type = random.choice(
+                    relations_type_to_entities_dict[r_type_g])
                 local_entities = kwargs.get(entity_type)
-                entities = np.random.choice(
-                    local_entities, size=n_entities, replace=False
-                ).tolist()
+                entities = np.random.choice(local_entities,
+                                            size=n_entities,
+                                            replace=False).tolist()
                 entities = [Entity(name=entity) for entity in entities]
 
                 # Create the model
-                model = ImmediateOrderModel(entities=entities, relations=relations)
+                model = ImmediateOrderModel(entities=entities,
+                                            relations=relations)
                 runtime_name = leaf.__name__ + "_-_" + answer + "_-_" + str(i)
                 # Complete the topic
                 topic = leaf(
                     answer=answer,
                     relation_type=relations[0].relation_type,
-                    shape_str=(entitie_type,),
+                    shape_str=(entity_type, ),
                 )
                 # Create the generator
                 generator = ImmediateOrder(
