@@ -21,6 +21,7 @@ The following command-line arguments can be used to customize the behavior of th
 - **`--task_path:`** Root path where the task configuration folders are located. 
 - **`--tasks:`** List of task names to run the experiments. Use a comma-separated string (e.g., `--tasks task1,task2`).
 - **`--output_path:`** Path to save the script results. The output folder will be timestamped.
+- **`--include_lm_eval_templates:`** Flag to include the `lm-eval-harness` custom template in the output path. 
 - **`--seed:`** Random seed for Python's random module.
 - **`--numpy_random_seed:`** Random seed for NumPy's random module.
 - **`--verbosity:`** or **`-v`** Controls the reported logging error level. (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
@@ -33,3 +34,40 @@ Below are a few examples on how you might run the script:
 ```sh
 python3 main.py
 ```
+
+### Evaluate with `lm-eval-harenss`
+
+Before continue, be sure you have installed `lm-eval-harness`
+
+##### local-completions
+
+```bash
+lm_eval \
+--model local-completions \
+--model_args model=<SERVED_MODEL_NAME>,base_url=http://{ip:port}/v1/completions,num_concurrent=16,max_retries=3,tokenized_requests=False,tokenizer_backend=None \
+--limit 3 \
+--tasks babisteps-all \
+--include_path <PATH/TO/LM/EVAL/TEMPLATES>  \
+--output_path <PATH/WHERE/TO/SAVE/RESULTS> \
+--log_samples
+```
+
+##### local-chat-completions
+
+```bash
+lm_eval \
+--model local-chat-completions \
+--model_args model=<SERVED_MODEL_NAME>,base_url=http://{ip:port}/v1/chat/completions,num_concurrent=16,max_retries=3,tokenized_requests=False,tokenizer_backend=None \
+--gen_kwargs max_tokens=8192,timeout=600 \
+--limit 3 \
+--tasks babisteps-chat-cot-all \
+--include_path <PATH/TO/LM/EVAL/TEMPLATES> \
+--output_path <PATH/WHERE/TO/SAVE/RESULTS> \
+--apply_chat_template \
+--fewshot_as_multiturn \
+--log_samples
+```
+
+Note:
+* Reasoner models would consume much more tokens, probably you should tweak `--gen_kwargs max_tokens=8192,timeout=600` params accordingly.
+* Remove `--limit x` if you want to evaluate over the entire generated dataset.

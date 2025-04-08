@@ -3,6 +3,14 @@ from pathlib import Path
 
 from datasets import load_dataset
 
+TASKS2NAME = {
+    "1": "simpletracking",
+    "2": "immediateorder",
+    "3": "complextracking",
+}
+
+NAME2TASK = {value: key for key, value in TASKS2NAME.items()}
+
 # TODO: Complet header and footer
 header = """---
 language:
@@ -26,7 +34,9 @@ ds = load_dataset('PnyxAI/babisteps', <task>')
 The available tasks are:
 | Task ID | Task Name | Split Name|
 |---------|-----------|----|
-| I       | TODO| TODO |
+| 0       | simpletracking| test |
+| 1       | immediateorder| test |
+| 2       | complextracking| test |
 
 ### PAPER NAME
 
@@ -44,14 +54,14 @@ def _craete_config_yaml(folder_name, split_name):
     - config_name: {folder_name}
       data_files:
         - split: {split_name}
-          path: "data/{folder_name}/{folder_name}-{split_name}.parquet"
+          path: "dataset/{folder_name}/{folder_name}-{split_name}.parquet"
 """
     return string
 
 
 def create_babisteps_dataset(dataset_path: Path, jsonl_path_dict: dict,
                              logger):
-    os.mkdir(os.path.join(dataset_path, "data"))
+    os.mkdir(os.path.join(dataset_path, "dataset"))
 
     # Create readme
     with open(os.path.join(dataset_path, "README.md"), "w") as f:
@@ -61,12 +71,13 @@ def create_babisteps_dataset(dataset_path: Path, jsonl_path_dict: dict,
         for task_id, (task_name,
                       jsonl_task_path) in enumerate(jsonl_path_dict.items()):
             folder_name = f"{task_name}"
-            os.mkdir(os.path.join(dataset_path, "data", folder_name))
+            os.mkdir(os.path.join(dataset_path, "dataset", folder_name))
             logger.debug("Loading task into HF dataset", task_name=task_name)
             ds = load_dataset("json", data_files=os.fspath(jsonl_task_path))
+            ds["test"] = ds.pop("train")
             for split in ds:
                 ds[split].to_parquet(
-                    os.path.join(dataset_path, "data", folder_name,
+                    os.path.join(dataset_path, "dataset", folder_name,
                                  f"{folder_name}-{split}.parquet"))
                 config_lines.append(_craete_config_yaml(folder_name, split))
 
