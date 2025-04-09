@@ -1,0 +1,5 @@
+group: babisteps-chat-cot-all
+task:
+- babisteps-chat-cot-task_01-simpletracking
+- babisteps-chat-cot-task_02-immediateorder
+- babisteps-chat-cot-task_03-complextracking

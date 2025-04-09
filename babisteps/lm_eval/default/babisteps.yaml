@@ -1,0 +1,5 @@
+group: babisteps-all
+task:
+- babisteps-task_01-simpletracking
+- babisteps-task_02-immediateorder
+- babisteps-task_03-complextracking

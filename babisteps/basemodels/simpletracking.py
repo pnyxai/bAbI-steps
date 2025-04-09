@@ -763,27 +763,27 @@ class SimpleTracker(BaseGenerator):
 
     def get_json(self):
         json = self.story.create_json()
-        choices = list(get_type_hints(self.topic)['answer'].__args__)
+        options = list(get_type_hints(self.topic)['answer'].__args__)
         if isinstance(self.topic,
                       (ActorInLocationPolar, ActorWithObjectPolar)):
             pass
         elif isinstance(self.topic, ActorInLocationWho):
-            choices.remove("designated_entity")
-            choices.extend([e.name for e in self.model.entities])
+            options.remove("designated_entity")
+            options.extend([e.name for e in self.model.entities])
         elif isinstance(self.topic, ActorInLocationWhere):
-            choices.remove("designated_location")
-            choices.extend([c.name for c in self.model.coordenates])
+            options.remove("designated_location")
+            options.extend([c.name for c in self.model.coordenates])
         elif isinstance(self.topic, ActorWithObjectWhat):
-            choices.remove("designated_object")
-            choices.extend([e.name for e in self.model.entities])
+            options.remove("designated_object")
+            options.extend([e.name for e in self.model.entities])
         elif isinstance(self.topic, ActorWithObjectWho):
-            choices.remove("designated_actor")
-            choices.extend([c.name for c in self.model.coordenates])
+            options.remove("designated_actor")
+            options.extend([c.name for c in self.model.coordenates])
         else:
             raise ValueError("Invalid answer type")
 
-        random.shuffle(choices)
-        json['choices'] = choices
+        random.shuffle(options)
+        json['options'] = options
 
         if self.name:
             json['leaf'] = self.name.split('_-_')[0]

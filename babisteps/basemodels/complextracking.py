@@ -1449,20 +1449,20 @@ class ComplexTracking(BaseGenerator):
 
     def get_json(self):
         json = self.story.create_json()
-        choices = list(get_type_hints(self.topic)['answer'].__args__)
+        options = list(get_type_hints(self.topic)['answer'].__args__)
         if isinstance(self.topic, ObjectInLocationPolar):
             # do nothing
             pass
         elif isinstance(self.topic, ObjectInLocationWhat):
-            choices.remove('designated_object')
-            choices.extend([o.name for o in self.model.dim2])
+            options.remove('designated_object')
+            options.extend([o.name for o in self.model.dim2])
         elif isinstance(self.topic, ObjectInLocationWhere):
-            choices.remove('designated_location')
-            choices.extend(
+            options.remove('designated_location')
+            options.extend(
                 [loc.name for loc in self.model.dim0[:self.shape[0] // 2]])
 
-        random.shuffle(choices)
-        json['choices'] = choices
+        random.shuffle(options)
+        json['options'] = options
         if self.name:
             json['leaf'] = self.name.split('_-_')[0]
             json['leaf_label'] = self.name.split('_-_')[1]

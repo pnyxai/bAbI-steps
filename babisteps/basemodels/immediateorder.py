@@ -331,19 +331,19 @@ class ImmediateOrder(BaseGenerator):
 
     def get_json(self):
         json = self.story.create_json()
-        choices = list(get_type_hints(self.topic)['answer'].__args__)
+        options = list(get_type_hints(self.topic)['answer'].__args__)
         if isinstance(self.topic, ImmediateOrderRequestPolar):
             # do nothing
             pass
         elif isinstance(self.topic, ImmediateOrderRequestHow):
-            choices.remove('designated_relation')
-            choices.extend([r.name for r in self.model.relations])
+            options.remove('designated_relation')
+            options.extend([r.name for r in self.model.relations])
         elif isinstance(self.topic, ImmediateOrderRequestWhat):
-            choices.remove('second_designated_event')
-            choices.extend([e.name for e in self.model.entities])
+            options.remove('second_designated_event')
+            options.extend([e.name for e in self.model.entities])
 
-        random.shuffle(choices)
-        json['choices'] = choices
+        random.shuffle(options)
+        json['options'] = options
         if self.name:
             json['leaf'] = self.name.split('_-_')[0]
             json['leaf_label'] = self.name.split('_-_')[1]
