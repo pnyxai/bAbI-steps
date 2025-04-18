@@ -7,7 +7,7 @@ from typing import Any, Callable, Literal, Optional, Union
 import networkx as nx
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sparse._sparse_array import SparseArray
+from sparse import SparseArray
 
 import babisteps.operators as ops
 from babisteps import logger

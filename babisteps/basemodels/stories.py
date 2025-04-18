@@ -8,7 +8,8 @@ class Story(BaseModel):
     describe_len: int
     story: list[FOL]
     question: str
-    answer: str
+    # Union can be a string or a list of strings
+    answer: str | list[str]
 
     def create_json(self):
         dict_json = {}
@@ -36,7 +37,11 @@ class Story(BaseModel):
                 txt += "\n"
             txt += s_i.to_nl() + "\n"
 
-        txt += "\n{}\n{}\n".format(self.question, self.answer)
+        txt += f"\n{self.question}\n"
+        if isinstance(self.answer, str):
+            txt += f"{self.answer}\n"
+        else:
+            txt += ", ".join(self.answer) + "\n"
         txt += "-" * 40
         txt += "\n\n"
 
