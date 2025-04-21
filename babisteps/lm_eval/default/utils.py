@@ -1,5 +1,6 @@
 import re
 from functools import partial
+import random
 
 from lm_eval.api.registry import register_filter
 from lm_eval.filters.extraction import Filter
@@ -14,9 +15,9 @@ def format_example(example, including_answer: bool):
     prompt += story
     prompt += "\nQuestion:\n"
     question = example["question"]
-    options = example["options"]
     prompt += question + "\n"
     prompt += "Options:\n"
+    options = example["options"]
     for i, opt in enumerate(options):
         prompt += "{}. {}\n".format(i, opt)
     prompt += "\nAnswer:\n"

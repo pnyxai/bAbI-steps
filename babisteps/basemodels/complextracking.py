@@ -3,7 +3,7 @@ from typing import Any, Callable, Literal, Optional, get_type_hints
 
 import numpy as np
 from pydantic import BaseModel, model_validator
-from sparse._dok import DOK
+from sparse import DOK
 
 from babisteps import operators
 from babisteps.basemodels import groups as gr

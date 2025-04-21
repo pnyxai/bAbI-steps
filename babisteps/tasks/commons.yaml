@@ -1,10 +1,10 @@
 task_path: "babisteps/tasks/commons.yaml"
 max_retries: 15
-num_samples_by_task: 10
+num_samples_by_task: 20
 verbosity: "INFO"
 # SimpleTracking and ComplexTracking
 states_qty: 16
-edges_qty: 6
+edges_qty: 10
 locations:
   - "bathroom"
   - "kitchen"
@@ -46,7 +46,9 @@ events:
   - "birthday"
   - "concert"
   - "festival"
-  - "conference" 
+  - "conference"
+  - "meeting"
+  - "ceremony"
 relations:
   big:
     base:

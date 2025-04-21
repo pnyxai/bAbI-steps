@@ -10,7 +10,9 @@ import yaml
 
 from babisteps.basemodels.immediateorder import (ImmediateOrder,
                                                  ImmediateOrderModel,
-                                                 ImmediateOrderRequestPolar)
+                                                 ImmediateOrderRequestHow,
+                                                 ImmediateOrderRequestPolar,
+                                                 ImmediateOrderRequestWhat)
 from babisteps.basemodels.nodes import Entity, Relationship
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
@@ -18,8 +20,8 @@ from babisteps.utils import generate_framework
 yaml_path = Path(__file__).parent / "config.yaml"
 task_leaf_list = [
     ImmediateOrderRequestPolar,
-    # ImmediateOrderRequestHow,
-    # ImmediateOrderRequestWhat,
+    ImmediateOrderRequestHow,
+    ImmediateOrderRequestWhat,
 ]
 
 relations_type_to_entities_dict = {

@@ -12,7 +12,7 @@ ipykernel = "^6.29.5"
 structlog = "^24.4.0"
 scipy = "^1.15.1"
 numba = "^0.60.0"
-sparse = "^0.15.5"
+sparse = "0.16.0"
 pyyaml = "^6.0.2"
 datasets = "^3.4.0"
 networkx = {extras = ["default"], version = "^3.4.2"}

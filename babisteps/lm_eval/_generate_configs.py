@@ -9,9 +9,21 @@ import os
 import yaml
 from tqdm import tqdm
 
-#eval_logger = logging.getLogger("lm-eval")
 
 from babisteps.datasets import TASKS2NAME
+
+# TO BE USED LATER WITH CUSTOM LM-EVAL-HARNESS FUNCTIONS
+IMMEDIATEORDER_CFG = f"""\
+fewshot_config:
+  sampler: first_n
+  doc_to_text: !function utils.TODO
+  doc_to_target: ""
+doc_to_text: !function utils.TODO
+doc_to_target: !function utils.TODO
+"""
+
+DICT_CFG = {}
+#DICT_CFG["2"] = IMMEDIATEORDER_CFG
 
 
 def parse_args():
@@ -53,7 +65,6 @@ if __name__ == "__main__":
         }
 
         file_save_path = args.save_prefix_path + f"_{task_name_use}.yaml"
-        #eval_logger.info(f"Saving yaml for subset {task_name_use} to {file_save_path}")
         with open(file_save_path, "w", encoding="utf-8") as yaml_file:
             yaml.dump(
                 yaml_dict,
@@ -61,6 +72,11 @@ if __name__ == "__main__":
                 allow_unicode=True,
                 #default_style='"',
             )
+        # To be used later with custom LM-EVAL-HARNESS functions
+        if task_id in DICT_CFG:
+            with open(file_save_path, "a", encoding="utf-8") as yaml_file:
+                yaml_file.write(DICT_CFG[task_id])
+            yaml_file.close()
     if args.task_prefix != "":
         # Add
         babi_subcategories = [
