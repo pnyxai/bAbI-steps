@@ -11,6 +11,7 @@ from babisteps.basemodels.nodes import Coordenate, Entity
 # Answer
 # -------------------------
 
+ANSWER_OPTION_QTY = 6
 
 class ListingRequest(BaseModel):
     answer: Any
@@ -291,7 +292,7 @@ class Listing(SimpleTrackerBaseGenerator):
             options = [["none"]]
         else:
             raise ValueError("Invalid answer type")
-        o = self.get_random_combinations(n=6)
+        o = self.get_random_combinations(n=ANSWER_OPTION_QTY)
         if isinstance(self.topic.answer, int):
             if self.topic.entities is None:
                 raise ValueError(
