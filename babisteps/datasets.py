@@ -7,6 +7,7 @@ TASKS2NAME = {
     "1": "simpletracking",
     "2": "immediateorder",
     "3": "complextracking",
+    "4": "listing"
 }
 
 NAME2TASK = {value: key for key, value in TASKS2NAME.items()}
@@ -34,9 +35,10 @@ ds = load_dataset('PnyxAI/babisteps', <task>')
 The available tasks are:
 | Task ID | Task Name | Split Name|
 |---------|-----------|----|
-| 0       | simpletracking| test |
-| 1       | immediateorder| test |
-| 2       | complextracking| test |
+| 1       | simpletracking| test |
+| 2       | immediateorder| test |
+| 3       | complextracking| test |
+| 4       | listing| test |
 
 ### PAPER NAME
 

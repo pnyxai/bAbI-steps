@@ -451,10 +451,21 @@ class ImmediateOrder(BaseGenerator):
 
         random.shuffle(options)
         json["options"] = options
-        if self.name:
-            json["leaf"] = self.name.split("_-_")[0]
-            json["leaf_label"] = self.name.split("_-_")[1]
-            json["leaf_index"] = self.name.split("_-_")[2]
+        if self.name and "_-_" in self.name:
+            parts = self.name.split("_-_")
+            if len(parts) == 3:
+                json["leaf"] = parts[0]
+                json["leaf_label"] = parts[1]
+                json["leaf_index"] = parts[2]
+            else:
+                raise ValueError(
+                    "self.name does not contain exactly three parts separated by '_-_'"
+                )
+        else:
+            raise ValueError(
+                "self.name is either None or does not contain the delimiter '_-_'"
+            )
+
         return json
 
     def get_txt(self):

@@ -1,7 +1,7 @@
 import importlib.util
 import os
 from pathlib import Path
-from typing import get_args
+from typing import Literal, get_args, get_origin
 
 import numpy as np
 import yaml
@@ -50,13 +50,31 @@ def _get_task_leaf_combinations(task_leaf_list):
         answer_type = leaf.__annotations__.get("answer")
         if answer_type is None:
             continue  # Skip if no answer type is defined.
-        # Extract the possible literal values.
+        # Extract the possible values, handling nested Literal
+        possible_answers = []
         try:
-            answers = get_args(answer_type)
-        except Exception:
-            answers = []
-        for ans in answers:
+            # Get the arguments of the top-level type (e.g., Union)
+            initial_args = get_args(answer_type)
+
+            for arg in initial_args:
+                if get_origin(arg) is Literal:
+                    # If the argument is a Literal, get its values and add them
+                    possible_answers.extend(get_args(arg))
+                else:
+                    # Otherwise (e.g., int, str, bool), add the type itself
+                    possible_answers.append(arg)
+        except Exception as e:
+            # Handle cases where get_args might fail (e.g., annotation isn't a
+            # type hint container )
+            print(
+                f"Warning: Could not process annotation for {leaf.__name__}: "
+                f"{answer_type} - {e}")
+            continue  # Skip this leaf
+
+        # Now iterate through the processed possible values
+        for ans in possible_answers:
             combinations.append((leaf, ans))
+
     return combinations
 
 
