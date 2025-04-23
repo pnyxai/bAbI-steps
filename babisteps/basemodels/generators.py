@@ -15,6 +15,8 @@ from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         EntityInCoordenateState, State)
 from babisteps.basemodels.stories import Story
 
+DELIM = "_-_"
+
 
 class BaseGenerator(BaseModel, ABC):
     verbosity: Union[int, str] = Field(default=logging.INFO)

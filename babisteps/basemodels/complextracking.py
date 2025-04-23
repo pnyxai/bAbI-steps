@@ -8,7 +8,7 @@ from sparse import DOK
 from babisteps import operators
 from babisteps.basemodels import groups as gr
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, Out, To
-from babisteps.basemodels.generators import BaseGenerator
+from babisteps.basemodels.generators import DELIM, BaseGenerator
 from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         ObjectInLocationState,
                                         ObjectInLocationStatePolar, State)
@@ -1463,10 +1463,22 @@ class ComplexTracking(BaseGenerator):
 
         random.shuffle(options)
         json['options'] = options
-        if self.name:
-            json['leaf'] = self.name.split('_-_')[0]
-            json['leaf_label'] = self.name.split('_-_')[1]
-            json['leaf_index'] = self.name.split('_-_')[2]
+        if self.name and DELIM in self.name:
+            parts = self.name.split(DELIM)
+            if len(parts) == 3:
+                json["leaf"] = parts[0]
+                json["leaf_label"] = parts[1]
+                json["leaf_index"] = parts[2]
+            else:
+                raise ValueError(
+                    f"self.name does not contain exactly three parts "
+                    f"separated by {DELIM}"
+                )
+        else:
+            raise ValueError(
+                f"self.name is either None or does not contain the delimiter {DELIM}"
+            )
+
         return json
 
     def get_txt(self):

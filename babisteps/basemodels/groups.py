@@ -119,10 +119,6 @@ def _get_object_transaction_OR_result(n_locs: int, y_i_group: Group,
         return np.where(y_f_bin == 1)[0]
     if y_f_nowhere:
         return np.where(y_i_bin == 1)[0]
-    # # Any is NOWHERE -> peform AND
-    # if y_i_nowhere or y_f_nowhere:
-    #     _and = y_i_bin & y_f_bin
-    #     return np.where(_and == 1)[0]
 
     # Both NOT NOWHERE -> do OR
     _or = y_i_bin | y_f_bin
@@ -165,7 +161,6 @@ def _get_forward(
             d = deltas[i]
             tx = d[0]
             if tx == (1, 0):
-                # x_i = d[1][0]
                 x_f = d[2][0]
                 y_i = d[1][1]
                 # check if the actor is in a group

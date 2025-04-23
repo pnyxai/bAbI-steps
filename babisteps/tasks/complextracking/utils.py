@@ -11,6 +11,7 @@ from babisteps.basemodels.complextracking import (ComplexTracking,
                                                   ObjectInLocationWhat,
                                                   ObjectInLocationWhere,
                                                   ObjectsInLocation)
+from babisteps.basemodels.generators import DELIM
 from babisteps.basemodels.nodes import Coordenate, Entity
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
@@ -63,7 +64,7 @@ def _get_generators(**kwargs):
                 d1 = [Coordenate(name=entity) for entity in actors]
                 d2 = [Entity(name=entity) for entity in objects]
                 model = ObjectsInLocation(dim0=d0, dim1=d1, dim2=d2)
-                runtime_name = cls.__name__ + "_-_" + answer + "_-_" + str(i)
+                runtime_name = cls.__name__ + DELIM + answer + DELIM + str(i)
                 topic = cls(answer=answer)
                 generator = ComplexTracking(
                     model=deepcopy(model)._shuffle(),

@@ -1,0 +1,6 @@
+task_name: listing
+entities: 7
+coordenates: 3
+listing_qty: 3
+gen_kwargs:
+func: utils._get_generators

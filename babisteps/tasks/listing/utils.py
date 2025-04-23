@@ -7,26 +7,17 @@ import numpy as np
 import yaml
 
 from babisteps.basemodels.generators import DELIM
+from babisteps.basemodels.listing import (ActorInLocationWho,
+                                          ActorWithObjectWhat, Listing)
 from babisteps.basemodels.nodes import Coordenate, Entity
-from babisteps.basemodels.simpletracking import (ActorInLocationPolar,
-                                                 ActorInLocationWhere,
-                                                 ActorInLocationWho,
-                                                 ActorWithObjectPolar,
-                                                 ActorWithObjectWhat,
-                                                 ActorWithObjectWho,
-                                                 EntitiesInCoordenates,
-                                                 SimpleTracker)
+from babisteps.basemodels.simpletracking import EntitiesInCoordenates
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
 
 yaml_path = Path(__file__).parent / "config.yaml"
 task_leaf_list = [
-    ActorInLocationPolar,
     ActorInLocationWho,
-    ActorInLocationWhere,
-    ActorWithObjectPolar,
     ActorWithObjectWhat,
-    ActorWithObjectWho,
 ]
 
 
@@ -51,16 +42,21 @@ def _get_generators(**kwargs):
     log_file = os.path.join(folder_path, "logs.txt")
     n_entities = yaml_cfg.get("entities")
     n_coordenates = yaml_cfg.get("coordenates")
+    listing_qty = yaml_cfg.get("listing_qty")
+    if listing_qty > n_entities:
+        raise ValueError(f"listing_qty ({listing_qty}) must be less than "
+                         f"or equal to # entities = {n_entities}")
 
     def generator_func():
         for leaf, answer, count in framework:
             for i in range(count):
+                if not isinstance(answer, str):
+                    # +1 to include the last element and avoid [)
+                    answer = np.random.randint(2, listing_qty + 1)
                 gen_kwargs = yaml_cfg["gen_kwargs"]
                 # Check if a case of Actorin Location, or Actor with Object
                 if leaf in [
-                        ActorInLocationPolar,
                         ActorInLocationWho,
-                        ActorInLocationWhere,
                 ]:
                     shape_str = ("locations", "actors")
                     entities_g = np.random.choice(total_actors,
@@ -70,9 +66,7 @@ def _get_generators(**kwargs):
                                                      size=n_coordenates,
                                                      replace=False).tolist()
                 elif leaf in [
-                        ActorWithObjectPolar,
                         ActorWithObjectWhat,
-                        ActorWithObjectWho,
                 ]:
                     shape_str = ("actors", "objects")
                     entities_g = np.random.choice(total_objects,
@@ -88,9 +82,11 @@ def _get_generators(**kwargs):
                 ]
                 model = EntitiesInCoordenates(entities=entities,
                                               coordenates=coordenates)
-                runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
+                runtime_name = leaf.__name__ + DELIM + str(
+                    answer) + DELIM + str(i)
                 topic = leaf(answer=answer)
-                generator = SimpleTracker(
+
+                generator = Listing(
                     model=deepcopy(model)._shuffle(),
                     states_qty=states_qty,
                     topic=topic,

@@ -8,6 +8,7 @@ from typing import get_type_hints
 import numpy as np
 import yaml
 
+from babisteps.basemodels.generators import DELIM
 from babisteps.basemodels.immediateorder import (ImmediateOrder,
                                                  ImmediateOrderModel,
                                                  ImmediateOrderRequestHow,
@@ -179,7 +180,7 @@ def _get_generators(**kwargs):
                 # Create the model
                 model = ImmediateOrderModel(entities=entities,
                                             relations=relations)
-                runtime_name = leaf.__name__ + "_-_" + answer + "_-_" + str(i)
+                runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
                 # Complete the topic
                 topic = leaf(
                     answer=answer,
