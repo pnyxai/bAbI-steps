@@ -8,7 +8,7 @@ from pydantic import BaseModel, model_validator
 from sparse import DOK, SparseArray
 
 from babisteps.basemodels.FOL import FOL, Exists, IsRelated
-from babisteps.basemodels.generators import BaseGenerator
+from babisteps.basemodels.generators import DELIM, BaseGenerator
 from babisteps.basemodels.nodes import Entity, ImmediateGraph, Relationship
 from babisteps.basemodels.stories import Story
 
@@ -451,8 +451,8 @@ class ImmediateOrder(BaseGenerator):
 
         random.shuffle(options)
         json["options"] = options
-        if self.name and "_-_" in self.name:
-            parts = self.name.split("_-_")
+        if self.name and DELIM in self.name:
+            parts = self.name.split(DELIM)
             if len(parts) == 3:
                 json["leaf"] = parts[0]
                 json["leaf_label"] = parts[1]

@@ -3,7 +3,7 @@ from typing import Any, Callable, Literal, Optional, get_type_hints
 
 from pydantic import BaseModel, model_validator
 
-from babisteps.basemodels.generators import SimpleTrackerBaseGenerator
+from babisteps.basemodels.generators import DELIM, SimpleTrackerBaseGenerator
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
@@ -530,8 +530,8 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         random.shuffle(options)
         json["options"] = options
 
-        if self.name and "_-_" in self.name:
-            parts = self.name.split("_-_")
+        if self.name and DELIM in self.name:
+            parts = self.name.split(DELIM)
             if len(parts) == 3:
                 json["leaf"] = parts[0]
                 json["leaf_label"] = parts[1]

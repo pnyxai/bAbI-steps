@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from babisteps.basemodels.generators import DELIM
 from babisteps.basemodels.nodes import Coordenate, Entity
 from babisteps.basemodels.simpletracking import (ActorInLocationPolar,
                                                  ActorInLocationWhere,
@@ -87,7 +88,7 @@ def _get_generators(**kwargs):
                 ]
                 model = EntitiesInCoordenates(entities=entities,
                                               coordenates=coordenates)
-                runtime_name = leaf.__name__ + "_-_" + answer + "_-_" + str(i)
+                runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
                 topic = leaf(answer=answer)
                 generator = SimpleTracker(
                     model=deepcopy(model)._shuffle(),

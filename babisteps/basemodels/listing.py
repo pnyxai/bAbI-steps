@@ -1,12 +1,11 @@
 import random
-from typing import Any, Callable, Literal, Optional, Union, get_type_hints
 from itertools import combinations
-
+from typing import Any, Callable, Literal, Optional, Union
 
 from pydantic import BaseModel, model_validator
 
-from babisteps.basemodels.nodes import (Coordenate, Entity)
-from babisteps.basemodels.generators import SimpleTrackerBaseGenerator
+from babisteps.basemodels.generators import DELIM, SimpleTrackerBaseGenerator
+from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
 # Answer
@@ -24,13 +23,15 @@ class ListingRequest(BaseModel):
     def get_answer(self):
         pass
 
+
 class ActorInLocationWho(ListingRequest):
     answer: Union[int, Literal["none", "unknown"]]
 
     @model_validator(mode='after')
     def validate_answer(self):
         if isinstance(self.answer, int) and self.answer <= 1:
-            raise ValueError("If answer is an integer, it must be greater than 1")
+            raise ValueError(
+                "If answer is an integer, it must be greater than 1")
         return self
 
     def get_question(self):
@@ -46,13 +47,15 @@ class ActorInLocationWho(ListingRequest):
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
             )
 
+
 class ActorWithObjectWhat(ListingRequest):
     answer: Union[int, Literal["none"]]
 
     @model_validator(mode='after')
     def validate_answer(self):
         if isinstance(self.answer, int) and self.answer <= 1:
-            raise ValueError("If answer is an integer, it must be greater than 1")
+            raise ValueError(
+                "If answer is an integer, it must be greater than 1")
         return self
 
     def get_question(self):
@@ -67,10 +70,10 @@ class ActorWithObjectWhat(ListingRequest):
             raise ValueError(
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
             )
-        
+
+
 class Listing(SimpleTrackerBaseGenerator):
     topic: ListingRequest
-
 
     def load_ontology_from_topic(self) -> Callable:
         # Define the mapping between answer types and loader functions
@@ -89,8 +92,7 @@ class Listing(SimpleTrackerBaseGenerator):
         if topic_type not in loader_mapping:
             raise ValueError(
                 f"Unsupported answer type: {topic_type.__name__}. "
-                f"Should be one of {[cls.__name__ for cls in loader_mapping]}"
-            )
+                f"Should be one of {[cls.__name__ for cls in loader_mapping]}")
         # Set the uncertainty based on the answer type
         if uncertainty_mapping[topic_type]:
             self.uncertainty = uncertainty_mapping[topic_type]
@@ -113,7 +115,7 @@ class Listing(SimpleTrackerBaseGenerator):
         string_list = [e.name for e in self.model.entities]
         # Calculate total possible combinations: 2^len(string_list)
         total_possible = 2**len(string_list)
-        
+
         # If n >= total possible combinations, generate all combinations
         if n >= total_possible:
             result = []  # Start with empty set
@@ -121,17 +123,17 @@ class Listing(SimpleTrackerBaseGenerator):
                 for comb in combinations(string_list, r):
                     result.append(list(comb))
             return result
-        
+
         # Generate n random unique combinations
         result = set()
-        
+
         # Ensure we have n unique combinations
         while len(result) < n:
             # Choose a random size for this combination
             size = random.randint(2, len(string_list))
             comb = tuple(sorted(random.sample(string_list, size)))
             result.add(comb)
-        
+
         # Convert set of tuples back to list of lists
         return [list(comb) for comb in result]
 
@@ -146,7 +148,7 @@ class Listing(SimpleTrackerBaseGenerator):
         self.logger.info(
             "Creating _actor_in_location_who",
             answer=self.topic.answer,
-            e=([e.name for e in self.topic.entities] 
+            e=([e.name for e in self.topic.entities]
                if self.topic.entities else self.topic.answer),
             c=c.name,
         )
@@ -155,19 +157,22 @@ class Listing(SimpleTrackerBaseGenerator):
         if isinstance(self.topic.answer, int):
             q = self.topic.answer
             i = self.states_qty - 1
-            condition = lambda x: sum(x[0,:q]) == q and sum(x[0, q:]) == 0
+            condition = lambda x: sum(x[0, :q]) == q and sum(x[0, q:]) == 0
             states[i] = self.initialize_state(i, condition)
             for j in list(reversed(range(i))):
                 condition = lambda x: True
                 states[j] = self.create_new_state(j, states[j + 1], condition)
 
         elif self.topic.answer == "none":
-            self.logger.debug("Creating _actor_in_location_who with answer none")
+            self.logger.debug(
+                "Creating _actor_in_location_who with answer none")
             i = self.states_qty - 1
-            condition = lambda x: sum(x[0, :]) == 0 and sum(x[-1, :]) < self.states_qty
+            condition = lambda x: sum(x[0, :]) == 0 and sum(x[-1, :]
+                                                            ) < self.states_qty
             states[i] = self.initialize_state(i, condition)
 
-            EIU = states[i].get_entities_in_coodenate(self.c2idx[self.uncertainty])
+            EIU = states[i].get_entities_in_coodenate(
+                self.c2idx[self.uncertainty])
 
             if EIU:
                 self.logger.debug(
@@ -176,8 +181,7 @@ class Listing(SimpleTrackerBaseGenerator):
                 )
                 while EIU:
                     EIU = states[i].get_entities_in_coodenate(
-                        self.c2idx[self.uncertainty]
-                    )
+                        self.c2idx[self.uncertainty])
                     for j in list(reversed(range(i))):
                         ue = random.choice(self.model.entities)
                         x_ue = self.e2idx[ue]
@@ -191,15 +195,16 @@ class Listing(SimpleTrackerBaseGenerator):
                             condition = lambda x, x_ue=x_ue: x[0, x_ue] == 1
                             EIU.remove(x_ue)
                         else:
-                            condition = lambda x, EIU=EIU: all(
-                                x[-1, EIU].todense() == [1] * len(EIU)
-                            )
-                        states[j] = self.create_new_state(j, states[j + 1], condition)
+                            condition = lambda x, EIU=EIU: all(x[
+                                -1, EIU].todense() == [1] * len(EIU))
+                        states[j] = self.create_new_state(
+                            j, states[j + 1], condition)
             else:
                 self.logger.debug("There were not entities in uncertainty")
                 for j in list(reversed(range(i))):
                     condition = lambda x: True
-                    states[j] = self.create_new_state(j, states[j + 1], condition)
+                    states[j] = self.create_new_state(j, states[j + 1],
+                                                      condition)
 
         elif self.topic.answer == "unknown":
             i = self.states_qty - 1
@@ -208,24 +213,25 @@ class Listing(SimpleTrackerBaseGenerator):
 
             condition = lambda x: empty_l(x) and some_in_UN(x)
             states[i] = self.initialize_state(i, condition)
-            EIU = states[i].get_entities_in_coodenate(self.c2idx[self.uncertainty])
+            EIU = states[i].get_entities_in_coodenate(
+                self.c2idx[self.uncertainty])
             for j in list(reversed(range(i))):
                 ue = random.choice(self.model.entities)
                 x_ue = self.e2idx[ue]
                 if x_ue in EIU:
-                    condition = (
-                        lambda x, x_ue=x_ue: x[0, x_ue] == 0 and x[-1, x_ue] == 0
-                    )
+                    condition = (lambda x, x_ue=x_ue: x[0, x_ue] == 0 and x[
+                        -1, x_ue] == 0)
                     EIU.remove(x_ue)
                 else:
-                    condition = lambda x: all(x[-1, EIU].todense() == [1] * len(EIU))
+                    condition = lambda x: all(x[-1, EIU].todense() == [1] *
+                                              len(EIU))
                 states[j] = self.create_new_state(j, states[j + 1], condition)
         else:
             raise ValueError("Invalid answer value")
         self.logger.info(
             "actor_in_location_who successfully created:",
             answer=self.topic.answer,
-            e=([e.name for e in self.topic.entities] 
+            e=([e.name for e in self.topic.entities]
                if self.topic.entities else self.topic.answer),
             c=c.name,
         )
@@ -242,7 +248,7 @@ class Listing(SimpleTrackerBaseGenerator):
         self.logger.info(
             "Creating _actor_with_object_what",
             answer=self.topic.answer,
-            e=([e.name for e in self.topic.entities] 
+            e=([e.name for e in self.topic.entities]
                if self.topic.entities else self.topic.answer),
             c=c.name,
         )
@@ -251,7 +257,7 @@ class Listing(SimpleTrackerBaseGenerator):
         i = self.states_qty - 1
         if isinstance(self.topic.answer, int):
             q = self.topic.answer
-            condition = lambda x: sum(x[0,:q]) == q and sum(x[0, q:]) == 0
+            condition = lambda x: sum(x[0, :q]) == q and sum(x[0, q:]) == 0
         elif self.topic.answer == "none":
             condition = lambda x: sum(x[0, :]) == 0
         else:
@@ -267,7 +273,7 @@ class Listing(SimpleTrackerBaseGenerator):
         self.logger.info(
             "_actor_with_object_what successfully created:",
             answer=self.topic.answer,
-            e=([e.name for e in self.topic.entities] 
+            e=([e.name for e in self.topic.entities]
                if self.topic.entities else self.topic.answer),
             c=c.name,
         )
@@ -288,7 +294,8 @@ class Listing(SimpleTrackerBaseGenerator):
         o = self.get_random_combinations(n=6)
         if isinstance(self.topic.answer, int):
             if self.topic.entities is None:
-                raise ValueError("self.topic.entities is None, cannot derive 'anws'")
+                raise ValueError(
+                    "self.topic.entities is None, cannot derive 'anws'")
             anws = sorted([e.name for e in self.topic.entities])
             # if is not in the options, add it
             if anws not in options:
@@ -298,8 +305,8 @@ class Listing(SimpleTrackerBaseGenerator):
         random.shuffle(options)
         json["options"] = options
 
-        if self.name and "_-_" in self.name:
-            parts = self.name.split("_-_")
+        if self.name and DELIM in self.name:
+            parts = self.name.split(DELIM)
             if len(parts) == 3:
                 json["leaf"] = parts[0]
                 json["leaf_label"] = parts[1]
@@ -316,4 +323,4 @@ class Listing(SimpleTrackerBaseGenerator):
         return json
 
     def get_txt(self):
-        return self.story.create_txt()    
+        return self.story.create_txt()

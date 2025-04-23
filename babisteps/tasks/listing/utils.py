@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.basemodels.generators import DELIM
 from babisteps.basemodels.listing import (ActorInLocationWho,
-                                                 ActorWithObjectWhat,
-                                                 Listing)
+                                          ActorWithObjectWhat, Listing)
+from babisteps.basemodels.nodes import Coordenate, Entity
 from babisteps.basemodels.simpletracking import EntitiesInCoordenates
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
@@ -44,17 +44,15 @@ def _get_generators(**kwargs):
     n_coordenates = yaml_cfg.get("coordenates")
     listing_qty = yaml_cfg.get("listing_qty")
     if listing_qty > n_entities:
-        raise ValueError(
-            f"listing_qty ({listing_qty}) must be less than "
-            f"or equal to # entities = {n_entities}"
-        )
+        raise ValueError(f"listing_qty ({listing_qty}) must be less than "
+                         f"or equal to # entities = {n_entities}")
 
     def generator_func():
         for leaf, answer, count in framework:
             for i in range(count):
                 if not isinstance(answer, str):
                     # +1 to include the last element and avoid [)
-                    answer = np.random.randint(2, listing_qty+1) 
+                    answer = np.random.randint(2, listing_qty + 1)
                 gen_kwargs = yaml_cfg["gen_kwargs"]
                 # Check if a case of Actorin Location, or Actor with Object
                 if leaf in [
@@ -84,7 +82,8 @@ def _get_generators(**kwargs):
                 ]
                 model = EntitiesInCoordenates(entities=entities,
                                               coordenates=coordenates)
-                runtime_name = leaf.__name__ + "_-_" + str(answer) + "_-_" + str(i)
+                runtime_name = leaf.__name__ + DELIM + str(
+                    answer) + DELIM + str(i)
                 topic = leaf(answer=answer)
 
                 generator = Listing(
