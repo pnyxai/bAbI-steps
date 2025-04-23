@@ -538,11 +538,12 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
                 json["leaf_index"] = parts[2]
             else:
                 raise ValueError(
-                    "self.name does not contain exactly three parts separated by '_-_'"
+                    f"self.name does not contain exactly three parts "
+                    f"separated by {DELIM}"
                 )
         else:
             raise ValueError(
-                "self.name is either None or does not contain the delimiter '_-_'"
+                f"self.name is either None or does not contain the delimiter {DELIM}"
             )
 
         return json
