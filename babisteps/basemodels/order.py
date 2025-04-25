@@ -31,30 +31,31 @@ class GeneralOrder(OrderBaseGenerator):
         return loader_mapping[topic_type]
 
     def _get_rnd_hops(self) -> np.array:
-        # TODO: Add description !
-        # currently this functions limit the number of
-        # hops checking if the number of edges that will appear
-        # after the initial transitive closure is lower than
-        # self.edge_qty-1
-        def _check_hops(hops) -> bool:
-            """
-            Check if the number of hops is valid w.r.t the number of edges
-            """
-            # # of transitive closure edges given the number of hops
-            sum_tc = sum(range(hops+1))
-            return sum_tc < self.edge_qty-1
+        """
+        Generate a random sequence of hops between entities while ensuring 
+        the number of edges after the initial transitive closure is below 
+        a specified threshold.
 
-        # range of entities (staring from to avoid e0 and e1)
-        range_e = np.arange(2, len(self.model.entities))
-        # get valids random hops
-        flag = True
-        while flag:
-            hop_range = range(1, len(self.model.entities)-1)
-            n_hops = random.choice(hop_range)
-            if _check_hops(n_hops):
-                flag = False
-        # get random entities that confor the hops
-        array_rnd_e = np.random.choice(range_e, max(1, n_hops-1), replace=False)
+        Returns:
+            np.array: An array of entity indices representing the hops.
+        """
+
+        # array possible hops
+        hop_range = range(1, len(self.model.entities)-1)
+        # function that will calculate the total number of edges after
+        # initial transitive closure
+        sum_edges = lambda hops: sum(range(hops+2))
+        # apply the function to the hop_range
+        tc_edges = np.vectorize(sum_edges)(hop_range)
+        # get the valid hops
+        valid_tc_edges = np.where(tc_edges < self.edge_qty-1)[0]
+        hop_range = np.asanyarray(hop_range)[valid_tc_edges]
+        # get a random valid hop
+        n_hops = random.choice(hop_range)
+        # Etities array
+        e_array = np.arange(2, len(self.model.entities))
+        # get random entities that conform to the hops
+        array_rnd_e = np.random.choice(e_array, max(1, n_hops-1), replace=False)
         # add e0 and e1 to the array
         array_rnd_e = np.insert(array_rnd_e, 0, 0)
         array_rnd_e = np.append(array_rnd_e, 1)

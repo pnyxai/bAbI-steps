@@ -54,9 +54,6 @@ def _get_generators(**kwargs):
         for leaf, answer, count in framework:
             for i in range(count):
                 gen_kwargs = yaml_cfg["gen_kwargs"]
-                # # Pick a random relation type
-                # r_type_g = random.choice(
-                #     list(get_type_hints(leaf)["relation_type"].__args__))
                 r_type_g = "relative_size"
                 # Get relations compatible with the selected type
                 relations = _get_list_relations(
