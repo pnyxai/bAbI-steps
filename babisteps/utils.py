@@ -238,7 +238,17 @@ def create_task_path_dict(task_names: list[str], task_folders: list[Path],
                         f"different from the folder name {folder.name}")
     else:
         logger.info("RUNNING SPECIFIC TASKS", task_names=task_names)
+        task_folder_names = [folder.name for folder in task_folders]
         for task_name in task_names:
+            if task_name not in task_folder_names:
+                logger.error(
+                    "task_name not found in task_folders",
+                    task_name=task_name,
+                    task_folder_names=task_folder_names,
+                )
+                raise ValueError(
+                    f"task '{task_name}' not found in folders: {task_folder_names}"
+                )
             for folder in task_folders:
                 if folder.name == task_name:
                     yaml_path = folder / "config.yaml"

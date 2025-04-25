@@ -1,51 +1,115 @@
 import random
 from typing import Callable, get_type_hints
 
-from babisteps.basemodels.generators import (DELIM, OrderBaseGenerator,
-                                             OrderRequest, OrderRequestHow,
-                                             OrderRequestPolar,
-                                             OrderRequestWhat)
+import networkx as nx
+import numpy as np
+
+from sparse import SparseArray
+
+from babisteps.basemodels.generators import (
+    DELIM,
+    OrderBaseGenerator,
+    OrderRequest,
+    OrderRequestPolar,
+    OrderRequestHow,
+)
 from babisteps.basemodels.nodes import ImmediateGraph
 
 
-class ImmediateOrder(OrderBaseGenerator):
+class GeneralOrder(OrderBaseGenerator):
     topic: OrderRequest
 
     def load_ontology_from_topic(self) -> Callable:
         # Define the mapping between answer types and loader functions
         loader_mapping: dict[type[OrderRequest], Callable] = {
-            OrderRequestPolar: self._immediate_order_polar,
-            OrderRequestHow: self._immediate_order_how,
-            OrderRequestWhat: self._immediate_order_what,
+            OrderRequestPolar: self._order_polar,
+            OrderRequestHow: self._order_how,
         }
         # Get the type of the answer
         topic_type = type(self.topic)
 
         return loader_mapping[topic_type]
 
-    def _immediate_order_polar(self):
+    def _get_rnd_hops(self) -> np.array:
+        # TODO: Add description !
+        # currently this functions limit the number of
+        # hops checking if the number of edges that will appear
+        # after the initial transitive closure is lower than
+        # self.edge_qty-1
+        def _check_hops(hops) -> bool:
+            """
+            Check if the number of hops is valid w.r.t the number of edges
+            """
+            # # of transitive closure edges given the number of hops
+            sum_tc = sum(range(hops+1))
+            return sum_tc < self.edge_qty-1
+
+        # range of entities (staring from to avoid e0 and e1)
+        range_e = np.arange(2, len(self.model.entities))
+        # get valids random hops
+        flag = True
+        while flag:
+            hop_range = range(1, len(self.model.entities)-1)
+            n_hops = random.choice(hop_range)
+            if _check_hops(n_hops):
+                flag = False
+        # get random entities that confor the hops
+        array_rnd_e = np.random.choice(range_e, max(1, n_hops-1), replace=False)
+        # add e0 and e1 to the array
+        array_rnd_e = np.insert(array_rnd_e, 0, 0)
+        array_rnd_e = np.append(array_rnd_e, 1)
+        return array_rnd_e
+
+    def _transitive_reduction(self,
+        g: nx.DiGraph
+    )->tuple[SparseArray,nx.DiGraph]:
+        """
+        Perform transitive reduction on the given adjacency matrix and graph.
+        """
+        TR = nx.transitive_reduction(g)
+        TR.add_nodes_from(g.nodes(data=True))
+        TR.add_edges_from((u, v, g.edges[u, v]) for u, v in TR.edges)
+        # Genereate an empty adjacency matrix with graph after
+        # transitive reduction
+        am , _= self._create_empty_graph()
+        # Fill the adjacency matrix with the edges from the transitive reduction
+        for u, v in TR.edges():
+            am[u, v] = 1
+            am[v, u] = 0
+        return am, TR    
+        
+    def _order_polar(self):
         graphs = []
         e0, e1, r_am, r = self._init_setup()
         if self.topic.answer == "yes":
-            r_am[0, 1] = 1
-            r_am[1, 0] = 0
-            r.add_edge(0, 1)
+            array_rnd_e = self._get_rnd_hops()
+            for i_rnd_e in range(len(array_rnd_e)-1):
+                n_i = array_rnd_e[i_rnd_e]
+                n_f = array_rnd_e[i_rnd_e + 1]
+                r_am[n_i, n_f], r_am[n_f, n_i] = 1, 0
+                r.add_edge(n_i, n_f)
         elif self.topic.answer == "no":
-            r_am[0, 1] = 0
-            r_am[1, 0] = 1
-            r.add_edge(1, 0)
+            array_rnd_e = self._get_rnd_hops()
+            for i_rnd_e in range(len(array_rnd_e)-1):
+                n_i = array_rnd_e[i_rnd_e]
+                n_f = array_rnd_e[i_rnd_e + 1]
+                r_am[n_i, n_f], r_am[n_f, n_i] = 0, 1
+                r.add_edge(n_f, n_i)
         elif self.topic.answer == "unknown":
             r_am[0, 1] = 0
             r_am[1, 0] = 0
 
         self.logger.debug(
-            "Creating ImmediateOrderPolar",
+            "Creating OrderPolar",
             answer=self.topic.answer,
             e0=e0.name,
             e1=e1.name,
             relation=self.topic.r.name,
         )
         r_am, r = self._fill_edges(r_am, r, self.edge_qty)
+        # Get updated am and graph performing a transitive reduction.
+        r_am, r = self._transitive_reduction(r)
+
         graphs.append(
             ImmediateGraph(am=r_am,
                            g=r,
@@ -55,17 +119,21 @@ class ImmediateOrder(OrderBaseGenerator):
             for i, rlt in enumerate(self.model.relations[1:], start=1):
                 g_am, g = self._create_empty_graph()
                 g_am, g = self._fill_edges(g_am, g, self.edge_qty)
+                g_am, g  = self._transitive_reduction(g)
                 graphs.append(
                     ImmediateGraph(am=g_am, g=g, name=rlt.name, index=i))
         return graphs
 
-    def _immediate_order_how(self):
+    def _order_how(self):
         graphs = []
         e0, e1, r_am, r = self._init_setup()
         if self.topic.answer == "designated_relation":
-            r_am[0, 1] = 1
-            r_am[1, 0] = 0
-            r.add_edge(0, 1)
+            array_rnd_e = self._get_rnd_hops()
+            for i_rnd_e in range(len(array_rnd_e)-1):
+                n_i = array_rnd_e[i_rnd_e]
+                n_f = array_rnd_e[i_rnd_e + 1]
+                r_am[n_i, n_f], r_am[n_f, n_i] = 1, 0
+                r.add_edge(n_i, n_f)
         elif self.topic.answer == "unknown":
             r_am[0, 1] = 0
             r_am[1, 0] = 0
@@ -73,13 +141,14 @@ class ImmediateOrder(OrderBaseGenerator):
             raise ValueError(
                 "Invalid answer should be 'designated_relation' or 'unknown'")
         self.logger.debug(
-            "Creating ImmediateOrderHow",
+            "Creating OrderHow",
             answer=self.topic.answer,
             e0=e0.name,
             e1=e1.name,
             relation=self.topic.r.name,
         )
         r_am, r = self._fill_edges(r_am, r, self.edge_qty)
+        r_am, r = self._transitive_reduction(r)
         graphs.append(
             ImmediateGraph(am=r_am,
                            g=r,
@@ -90,57 +159,7 @@ class ImmediateOrder(OrderBaseGenerator):
                 g_am, g = self._create_empty_graph()
                 g_am[0, 1], g_am[1, 0] = 0, 0
                 g_am, g = self._fill_edges(g_am, g, self.edge_qty)
-                graphs.append(
-                    ImmediateGraph(am=g_am, g=g, name=rlt.name, index=i))
-        return graphs
-
-    def _immediate_order_what(self):
-        graphs = []
-        e0, e1, r_am, r = self._init_setup()
-        if self.topic.answer == "second_entity":
-            r_am[0, 1] = 1
-            r_am[1, 0] = 0
-            r.add_edge(0, 1)
-            r_am[0, 2:] = 0
-        elif self.topic.answer == "none":
-            if self.edge_qty <= len(self.model.entities) - 1:
-                self.logger.error(
-                    "The #edges must be <= that # entities when the answer is 'none'",
-                    answer=self.topic.answer,
-                    edge_qty=self.edge_qty,
-                    n_entities=len(self.model.entities),
-                )
-                raise ValueError(
-                    "The #edges must be <= that # entities when the answer is 'none'"
-                )
-            r_am[0, :] = 0
-            r_am[1:, 0] = 1
-            for i in range(1, len(self.model.entities)):
-                r.add_edge(i, 0)
-        elif self.topic.answer == "unknown":
-            rnd_e = random.choice(range(1, len(self.model.entities)))
-            r_am[rnd_e, 0] = 0
-            r_am[0, 1:] = 0
-        else:
-            raise ValueError(
-                "Invalid answer should be 'second_entity' or 'unknown'")
-        self.logger.debug(
-            "Creating ImmediateOrderWhat",
-            answer=self.topic.answer,
-            e0=e0.name,
-            e1=e1.name,
-            relation=self.topic.r.name,
-        )
-        r_am, r = self._fill_edges(r_am, r, self.edge_qty)
-        graphs.append(
-            ImmediateGraph(am=r_am,
-                           g=r,
-                           name=self.model.relations[0].name,
-                           index=0))
-        if len(self.model.relations) > 1:
-            for i, rlt in enumerate(self.model.relations[1:], start=1):
-                g_am, g = self._create_empty_graph()
-                g_am, g = self._fill_edges(g_am, g, self.edge_qty)
+                g_am, g  = self._transitive_reduction(g)
                 graphs.append(
                     ImmediateGraph(am=g_am, g=g, name=rlt.name, index=i))
         return graphs
@@ -154,9 +173,7 @@ class ImmediateOrder(OrderBaseGenerator):
             options.remove("designated_relation")
             o = self.topic.get_options(self.model.relations)
             options.extend(o)
-        elif isinstance(self.topic, OrderRequestWhat):
-            options.remove("second_entity")
-            options.extend([e.name for e in self.model.entities])
+
 
         random.shuffle(options)
         json["options"] = options
@@ -169,7 +186,8 @@ class ImmediateOrder(OrderBaseGenerator):
             else:
                 raise ValueError(
                     f"self.name does not contain exactly three parts "
-                    f"separated by {DELIM}")
+                    f"separated by {DELIM}"
+                )
         else:
             raise ValueError(
                 f"self.name is either None or does not contain the delimiter {DELIM}"
