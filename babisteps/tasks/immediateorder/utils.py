@@ -8,21 +8,20 @@ from typing import get_type_hints
 import numpy as np
 import yaml
 
-from babisteps.basemodels.generators import DELIM
-from babisteps.basemodels.immediateorder import (ImmediateOrder,
-                                                 ImmediateOrderModel,
-                                                 ImmediateOrderRequestHow,
-                                                 ImmediateOrderRequestPolar,
-                                                 ImmediateOrderRequestWhat)
+from babisteps.basemodels.generators import (DELIM, OrderModel,
+                                             OrderRequestHow,
+                                             OrderRequestPolar,
+                                             OrderRequestWhat)
+from babisteps.basemodels.immediateorder import ImmediateOrder
 from babisteps.basemodels.nodes import Entity, Relationship
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
 
 yaml_path = Path(__file__).parent / "config.yaml"
 task_leaf_list = [
-    ImmediateOrderRequestPolar,
-    ImmediateOrderRequestHow,
-    ImmediateOrderRequestWhat,
+    OrderRequestPolar,
+    OrderRequestHow,
+    OrderRequestWhat,
 ]
 
 relations_type_to_entities_dict = {
@@ -178,8 +177,7 @@ def _get_generators(**kwargs):
                 entities = [Entity(name=entity) for entity in entities]
 
                 # Create the model
-                model = ImmediateOrderModel(entities=entities,
-                                            relations=relations)
+                model = OrderModel(entities=entities, relations=relations)
                 runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
                 # Complete the topic
                 topic = leaf(

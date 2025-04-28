@@ -7,7 +7,10 @@ TASKS2NAME = {
     "1": "simpletracking",
     "2": "immediateorder",
     "3": "complextracking",
-    "4": "listing"
+    "4": "listing",
+    "5": "sizeorder",
+    "6": "spatialorder",
+    "7": "temporalorder",
 }
 
 NAME2TASK = {value: key for key, value in TASKS2NAME.items()}
@@ -39,6 +42,10 @@ The available tasks are:
 | 2       | immediateorder| test |
 | 3       | complextracking| test |
 | 4       | listing| test |
+| 5       | sizeorder| test |
+| 6       | spatialorder| test |
+| 7       | temporalorder| test |
+
 
 ### PAPER NAME
 

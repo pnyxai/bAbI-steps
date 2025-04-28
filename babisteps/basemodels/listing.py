@@ -13,6 +13,7 @@ from babisteps.basemodels.nodes import Coordenate, Entity
 
 ANSWER_OPTION_QTY = 6
 
+
 class ListingRequest(BaseModel):
     answer: Any
     entities: Optional[list[Entity]] = None
@@ -35,10 +36,10 @@ class ActorInLocationWho(ListingRequest):
                 "If answer is an integer, it must be greater than 1")
         return self
 
-    def get_question(self):
+    def get_question(self) -> str:
         return f"Who is in the {self.coordenate.name}?"
 
-    def get_answer(self):
+    def get_answer(self) -> list[str]:
         if isinstance(self.answer, int):
             return sorted([e.name for e in self.entities])
         elif self.answer == "none" or self.answer == "unknown":
@@ -59,10 +60,10 @@ class ActorWithObjectWhat(ListingRequest):
                 "If answer is an integer, it must be greater than 1")
         return self
 
-    def get_question(self):
+    def get_question(self) -> str:
         return f"What has {self.coordenate.name}?"
 
-    def get_answer(self):
+    def get_answer(self) -> list[str]:
         if isinstance(self.answer, int):
             return sorted([e.name for e in self.entities])
         elif self.answer == "none" or self.answer == "unknown":
@@ -315,8 +316,7 @@ class Listing(SimpleTrackerBaseGenerator):
             else:
                 raise ValueError(
                     f"self.name does not contain exactly three parts "
-                    f"separated by {DELIM}"
-                )
+                    f"separated by {DELIM}")
         else:
             raise ValueError(
                 f"self.name is either None or does not contain the delimiter {DELIM}"
