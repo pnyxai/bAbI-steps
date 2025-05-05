@@ -65,10 +65,10 @@ class ReplaceFilter(Filter):
 # ### Base ###
 def base_format(example: dict, include_options: bool) -> str:
     prompt = ""
-    prompt += "World enumeration:\n"
+    prompt += "## World enumeration ##\n"
     world = example["world_enumerate"]
     prompt += world
-    prompt += "\n\nStory:\n"
+    prompt += "\n\n## Story ##\n"
     story = example["story"]
     prompt += story
     prompt += "\nQuestion: "

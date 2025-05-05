@@ -11,8 +11,8 @@ doc_to_target: answer
 generation_kwargs:
   until:
     - "\n\n\n\n"
-    - "World enumeration"
-    - "Story"
+    - "## World enumeration ##"
+    - "## Story ##"
 filter_list:
   - name: get_response
     filter:
