@@ -1,8 +1,8 @@
-dataset_name: immediateorder
-description: 'The following are basic taks (with answers) on the ability: immediateorder.'
+dataset_name: sizeorder
+description: 'The following are basic taks (with answers) on the ability: sizeorder.'
 include: _default_template_yaml
-task: babisteps-task_02-immediateorder
-task_alias: task 02 - immediateorder
+task: babisteps-task_05-sizeorder
+task_alias: task 05 - sizeorder
 fewshot_config:
   sampler: default
   doc_to_text: !function utils.rnd_choice_fewshot_to_text
