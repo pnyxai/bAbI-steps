@@ -1,5 +1,7 @@
 dataset_name: simpletracking
-description: 'The following are basic taks on the subject of: simpletracking.'
+description: 'The following are basic taks (with answers) on the ability: simpletracking.
+
+  Return the answer to the question, without any explanation.'
 include: _default_template_yaml
 task: babisteps-chat-cot-task_01-simpletracking
 task_alias: task 01 - simpletracking
