@@ -3,7 +3,13 @@ from typing import Any, Callable, Literal, Optional, get_type_hints
 
 from pydantic import BaseModel, model_validator
 
-from babisteps.basemodels.generators import DELIM, SimpleTrackerBaseGenerator
+from babisteps.basemodels.generators import (
+    DELIM,
+    SimpleTrackerBaseGenerator,
+    ACTORS_NONE_ANSWERS,
+    OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
+    UNKNONW_ANSWERS,
+)
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
@@ -30,7 +36,10 @@ class ActorInLocationPolar(SimpleTrackerRequest):
         return f"Is {self.entity.name} in the {self.coordenate.name}?"
 
     def get_answer(self):
-        return self.answer
+        if self.answer == "yes" or self.answer == "no":
+            return [self.answer]
+        elif self.answer == "unknown":
+            return UNKNONW_ANSWERS
 
 
 class ActorInLocationWho(SimpleTrackerRequest):
@@ -41,9 +50,11 @@ class ActorInLocationWho(SimpleTrackerRequest):
 
     def get_answer(self):
         if self.answer == "designated_entity":
-            return self.entity.name
-        elif self.answer == "none" or self.answer == "unknown":
-            return self.answer
+            return [self.entity.name]
+        elif self.answer == "none":
+            return ACTORS_NONE_ANSWERS
+        elif self.answer == "unknown":
+            return UNKNONW_ANSWERS
         else:
             raise ValueError(
                 "Invalid answer, should be 'designated_entity', 'none' or 'unknown'"
@@ -58,9 +69,9 @@ class ActorInLocationWhere(SimpleTrackerRequest):
 
     def get_answer(self):
         if self.answer == "designated_location":
-            return self.coordenate.name
+            return [self.coordenate.name]
         elif self.answer == "unknown":
-            return self.answer
+            return UNKNONW_ANSWERS
         else:
             raise ValueError(
                 "Invalid answer value, should be 'designated_location' or 'unknown'"
@@ -74,7 +85,7 @@ class ActorWithObjectPolar(SimpleTrackerRequest):
         return f"Has {self.coordenate.name} the {self.entity.name}?"
 
     def get_answer(self):
-        return self.answer
+        return [self.answer]
 
 
 class ActorWithObjectWhat(SimpleTrackerRequest):
@@ -83,11 +94,11 @@ class ActorWithObjectWhat(SimpleTrackerRequest):
     def get_question(self):
         return f"What has {self.coordenate.name}?"
 
-    def get_answer(self):
+    def get_answer(self) -> list[str]:
         if self.answer == "designated_object":
-            return self.entity.name
+            return [self.entity.name]
         elif self.answer == "none":
-            return self.answer
+            return OBJECTS_LOCATION_EVENT_NONE_ANSWERS
         else:
             raise ValueError(
                 "Invalid answer value, should be 'designated_object' or 'none'"
@@ -102,9 +113,9 @@ class ActorWithObjectWho(SimpleTrackerRequest):
 
     def get_answer(self):
         if self.answer == "designated_actor":
-            return self.coordenate.name
+            return [self.coordenate.name]
         elif self.answer == "none":
-            return self.answer
+            return ACTORS_NONE_ANSWERS
         else:
             raise ValueError(
                 "Invalid answer value, should be 'designated_actor' or 'unknown'"
@@ -508,6 +519,8 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
 
     def get_json(self):
         json = self.story.create_json()
+        # TODO (Nicolas):
+        # Options should be taken randomly from the "none" and "unknown" list of anwers
         options = list(get_type_hints(self.topic)["answer"].__args__)
         if isinstance(self.topic,
                       (ActorInLocationPolar, ActorWithObjectPolar)):
@@ -539,8 +552,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             else:
                 raise ValueError(
                     f"self.name does not contain exactly three parts "
-                    f"separated by {DELIM}"
-                )
+                    f"separated by {DELIM}")
         else:
             raise ValueError(
                 f"self.name is either None or does not contain the delimiter {DELIM}"

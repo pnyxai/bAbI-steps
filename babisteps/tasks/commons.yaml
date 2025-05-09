@@ -1,7 +1,7 @@
 task_path: "babisteps/tasks/commons.yaml"
 max_retries: 15
-num_samples_by_task: 20
-verbosity: "INFO"
+num_samples_by_task: 50
+verbosity: "ERROR"
 # SimpleTracking and ComplexTracking
 states_qty: 16
 edges_qty: 10
@@ -74,14 +74,14 @@ relations:
     opposite:
     - behind
     type: relative_position
-  above:
-    base:
-    - above
-    - over
-    opposite:
-    - below
-    - under
-    type: relative_position
+  # above:
+  #   base:
+  #   - above
+  #   - over
+  #   opposite:
+  #   - below
+  #   - under
+  #   type: relative_position
   south:
     base:
     - south of

@@ -1,11 +1,4 @@
 dataset_name: spatialorder
-description: 'The following are basic taks (with answers) on the ability: spatialorder.
-
-  Return the answer to the question, without any explanation.'
 include: _default_template_yaml
 task: babisteps-chat-cot-task_06-spatialorder
 task_alias: task 06 - spatialorder
-fewshot_config:
-  sampler: default
-  doc_to_text: !function utils.fewshot_to_text
-  doc_to_target: "{{answer | random}}"

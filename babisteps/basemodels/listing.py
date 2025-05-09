@@ -4,7 +4,9 @@ from typing import Any, Callable, Literal, Optional, Union
 
 from pydantic import BaseModel, model_validator
 
-from babisteps.basemodels.generators import DELIM, SimpleTrackerBaseGenerator
+from babisteps.basemodels.generators import (
+    DELIM, SimpleTrackerBaseGenerator, ACTORS_NONE_ANSWERS,
+    OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS)
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
@@ -42,8 +44,10 @@ class ActorInLocationWho(ListingRequest):
     def get_answer(self) -> list[str]:
         if isinstance(self.answer, int):
             return sorted([e.name for e in self.entities])
-        elif self.answer == "none" or self.answer == "unknown":
-            return [self.answer]
+        elif self.answer == "none":
+            return ACTORS_NONE_ANSWERS
+        elif self.answer == "unknown":
+            return UNKNONW_ANSWERS
         else:
             raise ValueError(
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
@@ -66,8 +70,8 @@ class ActorWithObjectWhat(ListingRequest):
     def get_answer(self) -> list[str]:
         if isinstance(self.answer, int):
             return sorted([e.name for e in self.entities])
-        elif self.answer == "none" or self.answer == "unknown":
-            return [self.answer]
+        elif self.answer == "none":
+            return OBJECTS_LOCATION_EVENT_NONE_ANSWERS
         else:
             raise ValueError(
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
@@ -287,10 +291,15 @@ class Listing(SimpleTrackerBaseGenerator):
 
     def get_json(self):
         json = self.story.create_json()
+        # TODO: (nicolas)
+        # options should choice randomly one options for none and another for unknown
         if isinstance(self.topic, ActorInLocationWho):
-            options = [["none"], ["unknown"]]
+            none_option = random.choice(ACTORS_NONE_ANSWERS)
+            unknown_option = random.choice(UNKNONW_ANSWERS)
+            options = [[none_option], [unknown_option]]
         elif isinstance(self.topic, ActorWithObjectWhat):
-            options = [["none"]]
+            none_option = random.choice(OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
+            options = [[none_option]]
         else:
             raise ValueError("Invalid answer type")
         o = self.get_random_combinations(n=ANSWER_OPTION_QTY)

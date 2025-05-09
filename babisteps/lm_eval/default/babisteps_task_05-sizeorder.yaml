@@ -3,8 +3,3 @@ description: 'The following are basic taks (with answers) on the ability: sizeor
 include: _default_template_yaml
 task: babisteps-task_05-sizeorder
 task_alias: task 05 - sizeorder
-fewshot_config:
-  sampler: default
-  doc_to_text: !function utils.rnd_choice_fewshot_to_text
-  doc_to_target: ""
-doc_to_text: !function utils.rnd_choice_doc_to_text
