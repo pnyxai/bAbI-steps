@@ -18,22 +18,6 @@ fewshot_config:
   doc_to_target: ""
 doc_to_text: !function utils.listing_doc_to_text
 process_results: !function utils.process_results_listing
-filter_list:
-  - name: get_response
-    filter:
-      - function: "lowercase"    
-      # Filter everything after the first break line, ignoring leading newlines
-      - function: "regex"
-        regex_pattern: "^[\\n]*([^\\n]*)" # Updated regex
-      # Remove leading white spaces
-      - function: remove_whitespace
-      # function to ignore right white spaces or line breaks
-      - function: "regex"
-        regex_pattern: "^(.*?)\\\\s*$"
-      - function: "replace_regex" # Use the new filter type      
-        regex_pattern: " and" # The literal string " and" to match
-        replacement_string: "" # Replace with an empty string (this is the default)
-      - function: take_first
 """
 
 CHAT_LISTING_CFG = """\
@@ -42,24 +26,6 @@ fewshot_config:
   doc_to_text: !function utils.fewshot_to_text
   doc_to_target: !function utils.listing_fewshot_doc_to_target
 process_results: !function utils.process_results_listing
-filter_list:
-  - name: get_response
-    filter:
-      - function: "lowercase"
-      - function: "regex"
-        regex_pattern: "((?<=the answer is )(.*)(?=\\n|$)|(?<=answer: )(.*)(?=\\n|$)|(?<=the final answer: )(.*)(?=\\n|$))"
-      # Filter everything after the first break line, ignoring leading newlines
-      - function: "regex"
-        regex_pattern: "^[\\n]*([^\\n]*)" # Updated regex
-      # Remove leading white spaces
-      - function: remove_whitespace
-      # function to ignore right white spaces or line breaks
-      - function: "regex"
-        regex_pattern: "^(.*?)\\\\s*$"
-      - function: "replace_regex" # Use the new filter type      
-        regex_pattern: " and" # The literal string " and" to match
-        replacement_string: "" # Replace with an empty string (this is the default)
-      - function: take_first
 """
 
 DICT_CFG = {}

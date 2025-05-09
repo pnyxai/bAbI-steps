@@ -27,6 +27,9 @@ filter_list:
       # function to ignore right white spaces or line breaks
       - function: "regex"
         regex_pattern: "^(.*?)\\s*$"
+      - function: "replace_regex" # Use the new filter type      
+        regex_pattern: " and" # The literal string " and" to match
+        replacement_string: "" # Replace with an empty string (this is the default)        
       - function: take_first
 num_fewshot: 3
 metric_list:
