@@ -1,11 +1,4 @@
 dataset_name: immediateorder
-description: 'The following are basic taks (with answers) on the ability: immediateorder.
-
-  Return the answer to the question, without any explanation.'
 include: _default_template_yaml
 task: babisteps-chat-cot-task_02-immediateorder
 task_alias: task 02 - immediateorder
-fewshot_config:
-  sampler: default
-  doc_to_text: !function utils.fewshot_to_text
-  doc_to_target: "{{answer | random}}"

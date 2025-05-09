@@ -1,4 +1,11 @@
+aggregate_metric_list:
+-   aggregation: mean
+    filter_list: get_response
+    metric: exact_match
+    weight_by_size: true
 group: babisteps-all
+metadata:
+    version: 1
 task:
 - babisteps-task_01-simpletracking
 - babisteps-task_02-immediateorder

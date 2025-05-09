@@ -8,7 +8,8 @@ from sparse import DOK
 from babisteps import operators
 from babisteps.basemodels import groups as gr
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, Out, To
-from babisteps.basemodels.generators import DELIM, BaseGenerator
+from babisteps.basemodels.generators import (
+    DELIM, BaseGenerator, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS)
 from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         ObjectInLocationState,
                                         ObjectInLocationStatePolar, State)
@@ -24,7 +25,7 @@ class ComplexTrackingRequest(BaseModel):
     def get_question(self):
         pass
 
-    def get_answer(self):
+    def get_answer(self) -> list[str]:
         pass
 
 
@@ -37,8 +38,13 @@ class ObjectInLocationPolar(ComplexTrackingRequest):
     def get_question(self):
         return f"Is the {self.d2.name} in the {self.d0.name}?"
 
-    def get_answer(self):
-        return self.answer
+    def get_answer(self) -> list[str]:
+        if self.answer == "yes" or self.answer == "no":
+            return [self.answer]
+        elif self.answer == "unknown":
+            return UNKNONW_ANSWERS
+        else:
+            raise ValueError("answer should be 'yes', 'no' or 'unknown'")
 
 
 class ObjectInLocationWhat(ComplexTrackingRequest):
@@ -50,11 +56,13 @@ class ObjectInLocationWhat(ComplexTrackingRequest):
     def get_question(self):
         return f"What is in the {self.d0.name}?"
 
-    def get_answer(self):
+    def get_answer(self) -> list[str]:
         if self.answer == "designated_object":
-            return self.d2.name
-        elif self.answer == "none" or self.answer == "unknown":
-            return self.answer
+            return [self.d2.name]
+        elif self.answer == "none":
+            return OBJECTS_LOCATION_EVENT_NONE_ANSWERS
+        elif self.answer == "unknown":
+            return UNKNONW_ANSWERS
         else:
             raise ValueError(
                 "answer should be 'designated_object', 'none' or 'unknown'")
@@ -69,11 +77,11 @@ class ObjectInLocationWhere(ComplexTrackingRequest):
     def get_question(self):
         return f"Where is the {self.d2.name}?"
 
-    def get_answer(self):
+    def get_answer(self) -> list[str]:
         if self.answer == "designated_location":
-            return self.d0.name
+            return [self.d0.name]
         elif self.answer == "unknown":
-            return self.answer
+            return UNKNONW_ANSWERS
         else:
             raise ValueError(
                 "answer should be 'designated_location' or 'unknown'")
@@ -1472,8 +1480,7 @@ class ComplexTracking(BaseGenerator):
             else:
                 raise ValueError(
                     f"self.name does not contain exactly three parts "
-                    f"separated by {DELIM}"
-                )
+                    f"separated by {DELIM}")
         else:
             raise ValueError(
                 f"self.name is either None or does not contain the delimiter {DELIM}"

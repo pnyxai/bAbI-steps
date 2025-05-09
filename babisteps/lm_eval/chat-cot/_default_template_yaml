@@ -4,7 +4,7 @@ fewshot_split: test
 fewshot_config:
   sampler: default
   doc_to_text: !function utils.fewshot_to_text
-  doc_to_target: answer
+  doc_to_target: "Final answer: {{answer | random}}"
 output_type: generate_until
 doc_to_text: !function utils.doc_to_text
 doc_to_target: answer
@@ -17,6 +17,8 @@ filter_list:
   - name: get_response
     filter:
       - function: "lowercase"
+      - function: "regex"
+        regex_pattern: "((?<=the answer is )(.*)(?=\n|$)|(?<=answer: )(.*)(?=\n|$)|(?<=the final answer: )(.*)(?=\n|$))"
       # Filter everything after the first break line, ignoring leading newlines
       - function: "regex"
         regex_pattern: "^[\n]*([^\n]*)" # Updated regex

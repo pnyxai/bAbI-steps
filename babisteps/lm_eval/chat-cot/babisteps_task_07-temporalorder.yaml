@@ -1,11 +1,4 @@
 dataset_name: temporalorder
-description: 'The following are basic taks (with answers) on the ability: temporalorder.
-
-  Return the answer to the question, without any explanation.'
 include: _default_template_yaml
 task: babisteps-chat-cot-task_07-temporalorder
 task_alias: task 07 - temporalorder
-fewshot_config:
-  sampler: default
-  doc_to_text: !function utils.fewshot_to_text
-  doc_to_target: "{{answer | random}}"
