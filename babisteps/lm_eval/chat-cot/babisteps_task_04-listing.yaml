@@ -1,19 +1,18 @@
 dataset_name: listing
-description: 'The following are basic taks (with answers) on the ability: listing.
-
-  Return the answer to the question, without any explanation.'
 include: _default_template_yaml
 task: babisteps-chat-cot-task_04-listing
 task_alias: task 04 - listing
 fewshot_config:
   sampler: default
   doc_to_text: !function utils.fewshot_to_text
-  doc_to_target: "{{answer | join(', ')}}"
+  doc_to_target: !function utils.listing_fewshot_doc_to_target
 process_results: !function utils.process_results_listing
 filter_list:
   - name: get_response
     filter:
-      - function: "lowercase"    
+      - function: "lowercase"
+      - function: "regex"
+        regex_pattern: "((?<=the answer is )(.*)(?=\n|$)|(?<=answer: )(.*)(?=\n|$)|(?<=the final answer: )(.*)(?=\n|$))"
       # Filter everything after the first break line, ignoring leading newlines
       - function: "regex"
         regex_pattern: "^[\n]*([^\n]*)" # Updated regex

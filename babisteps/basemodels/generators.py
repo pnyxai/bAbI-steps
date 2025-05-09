@@ -11,14 +11,28 @@ from pydantic import BaseModel, Field, model_validator
 from sparse import DOK, SparseArray
 
 from babisteps import logger
-from babisteps.basemodels.FOL import (FOL, Exists, From, FromTo, In, IsRelated,
-                                      To)
-from babisteps.basemodels.nodes import (Coordenate, Entity,
-                                        EntityInCoordenateState,
-                                        ImmediateGraph, Relationship, State)
+from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, IsRelated, To
+from babisteps.basemodels.nodes import (
+    Coordenate,
+    Entity,
+    EntityInCoordenateState,
+    ImmediateGraph,
+    Relationship,
+    State,
+)
 from babisteps.basemodels.stories import Story
 
 DELIM = "_-_"
+ACTORS_NONE_ANSWERS = ["nobody", "no one"]
+OBJECTS_LOCATION_EVENT_NONE_ANSWERS = ["nothing"]
+UNKNONW_ANSWERS = [
+    "unknown",
+    "it is uncertain",
+    "it is impossible to know",
+    "not enough information",
+    "it's impossible to know",
+    "don't know",
+]
 
 
 class BaseGenerator(BaseModel, ABC):
@@ -40,13 +54,16 @@ class BaseGenerator(BaseModel, ABC):
                 self.__class__.__name__ if self.name is None else
                 self.__class__.__name__ + "-" + self.name,
                 level=self.verbosity,
-                log_file=self.log_file)
+                log_file=self.log_file,
+            )
         return self
 
     def recreate(self):
         """Recreates the instance with the original input values."""
-        self.logger.info("Recreating instance with original inputs.",
-                         original_inputs=self.original_inputs)
+        self.logger.info(
+            "Recreating instance with original inputs.",
+            original_inputs=self.original_inputs,
+        )
         if self.original_inputs is None:
             raise ValueError("Original inputs not available.")
         # Use self.__class__ so that the child class is recreated
@@ -358,7 +375,12 @@ class OrderRequestPolar(OrderRequest):
             raise ValueError("Invalid shape_str for OrderRequestPolar")
 
     def get_answer(self) -> list[str]:
-        return [self.answer]
+        if self.answer == "yes" or self.answer == "no":
+            return [self.answer]
+        elif self.answer == "unknown":
+            return UNKNONW_ANSWERS
+        else:
+            raise ValueError("'answer' must be 'yes', 'no', or 'unknown'")
 
 
 class OrderRequestHow(OrderRequest):
@@ -380,10 +402,10 @@ class OrderRequestHow(OrderRequest):
             if self.shape_str in [("locations", ), ("objects", )]:
                 for i in relation.base:
                     answers.append(
-                        f"The {self.e0.name} is {i} the {self.e1.name}")
+                        f"the {self.e0.name} is {i} the {self.e1.name}")
                 for j in relation.opposite:
                     answers.append(
-                        f"The {self.e1.name} is {j} the {self.e0.name}")
+                        f"the {self.e1.name} is {j} the {self.e0.name}")
 
             elif self.shape_str == ("actors", ):
                 for i in relation.base:
@@ -394,16 +416,16 @@ class OrderRequestHow(OrderRequest):
             elif self.shape_str == ("events", ):
                 for i in relation.base:
                     answers.append(
-                        f"The {self.e0.name} was {i} the {self.e1.name}")
+                        f"the {self.e0.name} was {i} the {self.e1.name}")
                 for j in relation.opposite:
                     answers.append(
-                        f"The {self.e1.name} was {j} the {self.e0.name}")
+                        f"the {self.e1.name} was {j} the {self.e0.name}")
             else:
                 raise ValueError("Invalid shape_str for OrderRequestHow")
             return answers
 
         elif self.answer == "unknown":
-            return [self.answer]
+            return UNKNONW_ANSWERS
         else:
             raise ValueError(
                 "'answer' must be 'designated_relation' or 'unknown'")
@@ -447,8 +469,13 @@ class OrderRequestWhat(OrderRequest):
     def get_answer(self):
         if self.answer == "second_entity":
             return [self.e1.name]
-        elif self.answer == "none" or self.answer == "unknown":
-            return [self.answer]
+        elif self.answer == "none":
+            if self.shape_str == ("actors", ):
+                return ACTORS_NONE_ANSWERS
+            else:
+                return OBJECTS_LOCATION_EVENT_NONE_ANSWERS
+        elif self.answer == "unknown":
+            return UNKNONW_ANSWERS
         else:
             raise ValueError(
                 "'answer' must be 'second_entity', 'none', or 'unknown'")

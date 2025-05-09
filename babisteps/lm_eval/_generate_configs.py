@@ -11,21 +11,6 @@ from tqdm import tqdm
 from babisteps.datasets import TASKS2NAME
 
 # TO BE USED LATER WITH CUSTOM LM-EVAL-HARNESS FUNCTIONS
-IMMEDIATEORDER_CFG = """\
-fewshot_config:
-  sampler: default
-  doc_to_text: !function utils.rnd_choice_fewshot_to_text
-  doc_to_target: ""
-doc_to_text: !function utils.rnd_choice_doc_to_text
-"""
-
-CHAT_IMMEDIATEORDER_CFG = """\
-fewshot_config:
-  sampler: default
-  doc_to_text: !function utils.fewshot_to_text
-  doc_to_target: "{{answer | random}}"
-"""
-
 LISTING_CFG = """\
 fewshot_config:
   sampler: default
@@ -55,12 +40,14 @@ CHAT_LISTING_CFG = """\
 fewshot_config:
   sampler: default
   doc_to_text: !function utils.fewshot_to_text
-  doc_to_target: "{{answer | join(', ')}}"
+  doc_to_target: !function utils.listing_fewshot_doc_to_target
 process_results: !function utils.process_results_listing
 filter_list:
   - name: get_response
     filter:
-      - function: "lowercase"    
+      - function: "lowercase"
+      - function: "regex"
+        regex_pattern: "((?<=the answer is )(.*)(?=\\n|$)|(?<=answer: )(.*)(?=\\n|$)|(?<=the final answer: )(.*)(?=\\n|$))"
       # Filter everything after the first break line, ignoring leading newlines
       - function: "regex"
         regex_pattern: "^[\\n]*([^\\n]*)" # Updated regex
@@ -77,16 +64,8 @@ filter_list:
 
 DICT_CFG = {}
 COT_DICT_CFG = {}
-DICT_CFG["2"] = IMMEDIATEORDER_CFG
-COT_DICT_CFG["2"] = CHAT_IMMEDIATEORDER_CFG
 DICT_CFG["4"] = LISTING_CFG
 COT_DICT_CFG["4"] = CHAT_LISTING_CFG
-DICT_CFG["5"] = IMMEDIATEORDER_CFG
-COT_DICT_CFG["5"] = CHAT_IMMEDIATEORDER_CFG
-DICT_CFG["6"] = IMMEDIATEORDER_CFG
-COT_DICT_CFG["6"] = CHAT_IMMEDIATEORDER_CFG
-DICT_CFG["7"] = IMMEDIATEORDER_CFG
-COT_DICT_CFG["7"] = CHAT_IMMEDIATEORDER_CFG
 
 
 def parse_args():
@@ -118,9 +97,6 @@ if __name__ == "__main__":
         description = (
             f"The following are basic taks (with answers) on the ability: {task_name}."
         )
-        if args.task_prefix != "":
-            description += ("\nReturn the answer to the question, without any "
-                            "explanation.")
 
         yaml_dict = {
             "include":
@@ -132,9 +108,11 @@ if __name__ == "__main__":
             task_name_use.replace("_", " ").replace("-", " - "),
             "dataset_name":
             task_name,
-            "description":
-            description,
         }
+
+        # Only include description field when task_prefix is empty
+        if args.task_prefix == "":
+            yaml_dict["description"] = description
 
         file_save_path = args.save_prefix_path + f"_{task_name_use}.yaml"
         with open(file_save_path, "w", encoding="utf-8") as yaml_file:
@@ -171,6 +149,15 @@ if __name__ == "__main__":
                 if args.task_prefix != "" else "babisteps-all",
                 "task":
                 babi_subcategories,
+                "aggregate_metric_list": [{
+                    "aggregation": "mean",
+                    "metric": "exact_match",
+                    "weight_by_size": True,
+                    "filter_list": "get_response",
+                }],
+                "metadata": {
+                    "version": 1,
+                },
             },
             yaml_file,
             indent=4,
