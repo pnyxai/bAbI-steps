@@ -4,12 +4,8 @@ from typing import Any, Callable, Literal, Optional, get_type_hints
 from pydantic import BaseModel, model_validator
 
 from babisteps.basemodels.generators import (
-    DELIM,
-    SimpleTrackerBaseGenerator,
-    ACTORS_NONE_ANSWERS,
-    OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
-    UNKNONW_ANSWERS,
-)
+    ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
+    UNKNONW_ANSWERS, SimpleTrackerBaseGenerator)
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
@@ -531,6 +527,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         elif isinstance(self.topic, ActorInLocationWhere):
             options.remove("designated_location")
             options.extend([c.name for c in self.model.coordenates])
+            options.remove("nowhere")
         elif isinstance(self.topic, ActorWithObjectWhat):
             options.remove("designated_object")
             options.extend([e.name for e in self.model.entities])
