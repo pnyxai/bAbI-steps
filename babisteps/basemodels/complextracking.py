@@ -1464,6 +1464,7 @@ class ComplexTracking(BaseGenerator):
         elif isinstance(self.topic, ObjectInLocationWhat):
             options.remove('designated_object')
             options.extend([o.name for o in self.model.dim2])
+            options.remove('none')
         elif isinstance(self.topic, ObjectInLocationWhere):
             options.remove('designated_location')
             options.extend(
