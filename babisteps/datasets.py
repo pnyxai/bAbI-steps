@@ -32,7 +32,7 @@ footer = """---
 
 ```python
 from datasets import load_dataset
-ds = load_dataset('PnyxAI/babisteps', '<task>')
+ds = load_dataset('PNYX/babisteps', '<task>')
 ```
 
 The available tasks are:

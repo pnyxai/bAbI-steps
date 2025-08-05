@@ -158,9 +158,8 @@ class ImmediateOrder(OrderBaseGenerator):
             options.remove("second_entity")
             options.extend([e.name for e in self.model.entities])
             options.remove("none")
-            o = random.choice(
-                ACTORS_NONE_ANSWERS if self.topic.shape_str == ("actors", )
-                else OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
+            o = random.choice(ACTORS_NONE_ANSWERS if self.topic.shape_str == (
+                "actors", ) else OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
             options.append(o)
 
         random.shuffle(options)

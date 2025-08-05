@@ -54,7 +54,7 @@ def prepare_path(path: Path,
     return folder_path
 
 
-def save_as_jsonl(json_list,
+def save_as_jsonl(json_list: list[dict],
                   folder_path: Path,
                   logger,
                   filename="output.jsonl"):
@@ -65,6 +65,10 @@ def save_as_jsonl(json_list,
     :param folder_path: Path object representing the target folder
     :param filename: Name of the JSONL file (default: output.jsonl)
     """
+    # shuffle the json_list
+    import random
+    random.shuffle(json_list)
+
     try:
         file_path = folder_path / filename  # Construct full file path
 
