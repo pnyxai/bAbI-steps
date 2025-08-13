@@ -22,11 +22,14 @@ from babisteps.basemodels.simpletracking import (ActorInLocationPolar,
 from babisteps.utils import simple_parse_args_string
 
 
-def prepare_path(path: Path, folder_name: str, logger=None):
+def prepare_path(path: Path,
+                 folder_name: str,
+                 logger=None,
+                 delete_if_exists: bool = False):
     # Define the folder path
     folder_path = path / folder_name  # Assuming `path` is a Path object
     # Check if the folder exists
-    if folder_path.exists():
+    if folder_path.exists() and delete_if_exists:
         if logger:  # Only log if logger is provided
             logger.info("Clearing content", folder=folder_path)
 
@@ -51,7 +54,7 @@ def prepare_path(path: Path, folder_name: str, logger=None):
     return folder_path
 
 
-def save_as_jsonl(json_list,
+def save_as_jsonl(json_list: list[dict],
                   folder_path: Path,
                   logger,
                   filename="output.jsonl"):
@@ -62,6 +65,10 @@ def save_as_jsonl(json_list,
     :param folder_path: Path object representing the target folder
     :param filename: Name of the JSONL file (default: output.jsonl)
     """
+    # shuffle the json_list
+    import random
+    random.shuffle(json_list)
+
     try:
         file_path = folder_path / filename  # Construct full file path
 

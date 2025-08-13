@@ -142,27 +142,40 @@ def main():
     jsonl_path_dict = {}
     for task_name_i, task_path_i in task_path_dict.items():
         main_logger.info("Running task %s", task_name_i)
+        splits = ["train", "validation", "test"]
         func_i = ut.load_function_from_config(task_path_i)
-        jsonl_dataset = []
-        txt_dataset = ""
-        generators, folder_path = func_i(**yaml_cfg)
-        main_logger.info("Generatring task:", task=task_name_i)
-        for idx, g in enumerate(generators):
-            json_i, txt_i = proc._run_generation(g, yaml_cfg)
-            json_i['idx'] = idx
-            jsonl_dataset.append(json_i)
-            txt_dataset += txt_i
-        try:
-            jsonl_file_path_i = proc.save_as_jsonl(jsonl_dataset, folder_path,
-                                                   None)
-            jsonl_path_dict[task_name_i] = jsonl_file_path_i
-            proc.save_as_txt(txt_dataset, folder_path, None)
-        except Exception as e:
-            raise Exception("Error saving dataset") from e
-        main_logger.info("SUCCESS Generation", task=task_name_i)
+        for split in splits:
+            jsonl_dataset = []
+            txt_dataset = ""
+            generators, folder_path = func_i(**yaml_cfg)
+            main_logger.info("Generatring task:",
+                             task=task_name_i,
+                             split=split)
+            for idx, g in enumerate(generators):
+                if idx == 50 and split != "test":
+                    break
+                json_i, txt_i = proc._run_generation(g, yaml_cfg)
+                json_i['idx'] = idx
+                jsonl_dataset.append(json_i)
+                txt_dataset += txt_i
+            try:
+                jsonl_file_path_i = proc.save_as_jsonl(
+                    jsonl_dataset,
+                    folder_path,
+                    None,
+                    filename=f"{split}.jsonl")
+                jsonl_path_dict[task_name_i] = jsonl_file_path_i
+                proc.save_as_txt(txt_dataset,
+                                 folder_path,
+                                 None,
+                                 filename=f"{split}.txt")
+            except Exception as e:
+                raise Exception("Error saving dataset") from e
+            main_logger.info("SUCCESS Generation", task=task_name_i)
 
     main_logger.info("STARTING DATASET CREATION")
-    ds.create_babisteps_dataset(dataset_path, jsonl_path_dict, main_logger)
+    ds.create_babisteps_dataset(dataset_path, jsonl_path_dict, main_logger,
+                                splits)
     main_logger.info("SUCCESS DATASET CREATION")
 
     # LM-EVAL-HARNESS TEMPLATE CREATION

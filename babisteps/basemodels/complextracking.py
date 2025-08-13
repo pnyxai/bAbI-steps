@@ -9,7 +9,7 @@ from babisteps import operators
 from babisteps.basemodels import groups as gr
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, Out, To
 from babisteps.basemodels.generators import (
-    DELIM, BaseGenerator, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS)
+    DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS, BaseGenerator)
 from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         ObjectInLocationState,
                                         ObjectInLocationStatePolar, State)
@@ -1464,6 +1464,7 @@ class ComplexTracking(BaseGenerator):
         elif isinstance(self.topic, ObjectInLocationWhat):
             options.remove('designated_object')
             options.extend([o.name for o in self.model.dim2])
+            options.remove('none')
         elif isinstance(self.topic, ObjectInLocationWhere):
             options.remove('designated_location')
             options.extend(

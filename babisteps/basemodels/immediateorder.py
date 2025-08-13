@@ -1,10 +1,10 @@
 import random
 from typing import Callable, get_type_hints
 
-from babisteps.basemodels.generators import (DELIM, OrderBaseGenerator,
-                                             OrderRequest, OrderRequestHow,
-                                             OrderRequestPolar,
-                                             OrderRequestWhat)
+from babisteps.basemodels.generators import (
+    ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
+    OrderBaseGenerator, OrderRequest, OrderRequestHow, OrderRequestPolar,
+    OrderRequestWhat)
 from babisteps.basemodels.nodes import ImmediateGraph
 
 
@@ -157,6 +157,10 @@ class ImmediateOrder(OrderBaseGenerator):
         elif isinstance(self.topic, OrderRequestWhat):
             options.remove("second_entity")
             options.extend([e.name for e in self.model.entities])
+            options.remove("none")
+            o = random.choice(ACTORS_NONE_ANSWERS if self.topic.shape_str == (
+                "actors", ) else OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
+            options.append(o)
 
         random.shuffle(options)
         json["options"] = options

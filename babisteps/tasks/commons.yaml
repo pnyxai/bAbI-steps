@@ -1,6 +1,6 @@
 task_path: "babisteps/tasks/commons.yaml"
-max_retries: 15
-num_samples_by_task: 50
+max_retries: 20
+num_samples_by_task: 500
 verbosity: "ERROR"
 # SimpleTracking and ComplexTracking
 states_qty: 16
