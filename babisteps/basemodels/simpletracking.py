@@ -610,6 +610,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         # Add contextualized responses
         json["contextualized_options"] = list()
         for key in contextualized_options.keys():
+            random.shuffle(contextualized_options[key])
             for element in contextualized_options[key]:
                 json["contextualized_options"].append(self.story.response_templates[key].replace(REPLACE_PLACEHOLDER, element))
         json["contextualized_answer"] = list()

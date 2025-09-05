@@ -648,6 +648,7 @@ class OrderBaseGenerator(BaseGenerator):
             story=story,
             question=self.topic.get_question(),
             answer=self.topic.get_answer(),
+            response_templates=self.topic.get_reponse_tempalte(),
         )
         # FOL
         self.fol = world_enumerate + story

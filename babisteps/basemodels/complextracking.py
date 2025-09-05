@@ -29,6 +29,9 @@ class ComplexTrackingRequest(BaseModel):
     def get_answer(self) -> list[str]:
         pass
 
+    def get_reponse_tempalte(self):
+        pass
+
 
 class ObjectInLocationPolar(ComplexTrackingRequest):
     answer: Literal["yes", "no", "unknown"]
@@ -47,6 +50,12 @@ class ObjectInLocationPolar(ComplexTrackingRequest):
         else:
             raise ValueError("answer should be 'yes', 'no' or 'unknown'")
 
+    def get_reponse_tempalte(self):
+        return {
+            "unknown" : f"{REPLACE_PLACEHOLDER} if {self.d2.name} is in the {self.d0.name}",
+            "yes" : f"{REPLACE_PLACEHOLDER}, the {self.d2.name} is in the {self.d0.name}",
+            "no" : f"{REPLACE_PLACEHOLDER}, the {self.d2.name} is not in the {self.d0.name}",
+        }
 
 class ObjectInLocationWhat(ComplexTrackingRequest):
     answer: Literal["designated_object", "none", "unknown"]
@@ -68,6 +77,12 @@ class ObjectInLocationWhat(ComplexTrackingRequest):
             raise ValueError(
                 "answer should be 'designated_object', 'none' or 'unknown'")
 
+    def get_reponse_tempalte(self):
+        return {
+            "unknown" : f"{REPLACE_PLACEHOLDER} what is in the {self.d0.name}",
+            "none" : f"{REPLACE_PLACEHOLDER} is in the {self.d0.name}",
+            "designated_object" : f"the {REPLACE_PLACEHOLDER} is in the {self.d0.name}",
+        }
 
 class ObjectInLocationWhere(ComplexTrackingRequest):
     answer: Literal["designated_location", "unknown"]
@@ -86,6 +101,12 @@ class ObjectInLocationWhere(ComplexTrackingRequest):
         else:
             raise ValueError(
                 "answer should be 'designated_location' or 'unknown'")
+
+    def get_reponse_tempalte(self):
+        return {
+            "unknown" : f"{REPLACE_PLACEHOLDER} where the {self.d2.name} is",
+            "designated_location" : f"the {self.d2.name} is in the {REPLACE_PLACEHOLDER}",
+        }
 
 
 class ObjectsInLocation(BaseModel):
@@ -1445,6 +1466,7 @@ class ComplexTracking(BaseGenerator):
             story=story,
             question=self.topic.get_question(),
             answer=self.topic.get_answer(),
+            response_templates=self.topic.get_reponse_tempalte(),
         )
 
         self.fol = world_enumerate + story
@@ -1459,20 +1481,37 @@ class ComplexTracking(BaseGenerator):
     def get_json(self):
         json = self.story.create_json()
         options = list(get_type_hints(self.topic)['answer'].__args__)
+        contextualized_options = dict()
         if isinstance(self.topic, ObjectInLocationPolar):
-            # do nothing
-            pass
+            contextualized_options["yes"] = ["yes"]
+            contextualized_options["no"] = ["no"]
         elif isinstance(self.topic, ObjectInLocationWhat):
             options.remove('designated_object')
-            options.extend([o.name for o in self.model.dim2])
+            aux = [o.name for o in self.model.dim2]
+            options.extend(aux)
+            contextualized_options["designated_object"] = aux 
+
             options.remove('none')
         elif isinstance(self.topic, ObjectInLocationWhere):
             options.remove('designated_location')
-            options.extend(
-                [loc.name for loc in self.model.dim0[:self.shape[0] // 2]])
+            aux = [loc.name for loc in self.model.dim0[:self.shape[0] // 2]]
+            options.extend(aux)
+            contextualized_options["designated_location"] = aux 
 
         random.shuffle(options)
         json["options"] = options
+
+        # Add contextualized responses
+        json["contextualized_options"] = list()
+        for key in contextualized_options.keys():
+            random.shuffle(contextualized_options[key])
+            for element in contextualized_options[key]:
+                json["contextualized_options"].append(self.story.response_templates[key].replace(REPLACE_PLACEHOLDER, element))
+        json["contextualized_answer"] = list()
+        for element in self.story.answer:
+            json["contextualized_answer"].append(self.story.response_templates[self.topic.answer].replace(REPLACE_PLACEHOLDER, element))
+
+
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)
             if len(parts) == 3:
