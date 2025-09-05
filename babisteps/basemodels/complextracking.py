@@ -15,6 +15,7 @@ from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         ObjectInLocationStatePolar, State)
 from babisteps.basemodels.stories import Story
 
+REPLACE_PLACEHOLDER = "<PLACEHOLDER>"
 
 class ComplexTrackingRequest(BaseModel):
     answer: Any
@@ -1471,7 +1472,7 @@ class ComplexTracking(BaseGenerator):
                 [loc.name for loc in self.model.dim0[:self.shape[0] // 2]])
 
         random.shuffle(options)
-        json['options'] = options
+        json["options"] = options
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)
             if len(parts) == 3:

@@ -29,7 +29,7 @@ UNKNONW_ANSWERS = [
     "unknown",
     "it is uncertain",
     "it is impossible to know",
-    "not enough information",
+    "not enough information to answer",
     "it's impossible to know",
     "don't know",
 ]
@@ -317,6 +317,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
             story=story,
             question=self.topic.get_question(),
             answer=self.topic.get_answer(),
+            response_templates=self.topic.get_reponse_tempalte(),
         )
         self.fol = world_enumerate + story
 
