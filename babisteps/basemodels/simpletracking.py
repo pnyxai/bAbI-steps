@@ -5,7 +5,7 @@ from pydantic import BaseModel, model_validator
 
 from babisteps.basemodels.generators import (
     ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
-    UNKNONW_ANSWERS, SimpleTrackerBaseGenerator)
+    UNKNONW_ANSWERS, SimpleTrackerBaseGenerator, REPLACE_PLACEHOLDER)
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
@@ -110,6 +110,7 @@ class ActorWithObjectPolar(SimpleTrackerRequest):
         return {
             "yes" : f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} has the {self.entity.name}",
             "no" : f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} has not the {self.entity.name}",
+            "unknown" : f"{REPLACE_PLACEHOLDER} if {self.coordenate.name} has the {self.entity.name}",
         }
 
 
@@ -133,6 +134,7 @@ class ActorWithObjectWhat(SimpleTrackerRequest):
         return {
             "none" : f"{self.coordenate.name} has got {REPLACE_PLACEHOLDER}",
             "designated_object" : f"{self.coordenate.name} has got the {REPLACE_PLACEHOLDER}",
+            "unknown" : f"{REPLACE_PLACEHOLDER} what {self.coordenate.name} has got",
         }
 
 class ActorWithObjectWho(SimpleTrackerRequest):
@@ -155,6 +157,7 @@ class ActorWithObjectWho(SimpleTrackerRequest):
         return {
             "none" : f"{REPLACE_PLACEHOLDER} has got the {self.entity.name}",
             "designated_actor" : f"{REPLACE_PLACEHOLDER} has got the {self.entity.name}",
+            "unknown" : f"{REPLACE_PLACEHOLDER} who has got the {self.entity.name}",
         }
 
 # -------------------------
@@ -562,6 +565,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
                       (ActorInLocationPolar, ActorWithObjectPolar)):
             contextualized_options["yes"] = ["yes"]
             contextualized_options["no"] = ["no"]
+            contextualized_options["unknown"] = ["it is unknown"]
         elif isinstance(self.topic, ActorInLocationWho):
             options.remove("designated_entity")
             aux = [e.name for e in self.model.entities]
@@ -579,6 +583,10 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             contextualized_options["designated_location"] = aux 
 
             options.remove("nowhere")
+
+            # Add unknown
+            contextualized_options["unknown"] = ["it is unknown"]
+
         elif isinstance(self.topic, ActorWithObjectWhat):
             options.remove("designated_object")
             aux = [e.name for e in self.model.entities]
@@ -589,6 +597,8 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             aux = random.choice(OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
             options.append(aux)
             contextualized_options["none"] = [aux] 
+            # Add unknown
+            contextualized_options["unknown"] = ["it is unknown"]
         elif isinstance(self.topic, ActorWithObjectWho):
             options.remove("designated_actor")
             aux = [c.name for c in self.model.coordenates]
@@ -600,6 +610,8 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             aux = random.choice(ACTORS_NONE_ANSWERS)
             options.append(aux)
             contextualized_options["none"] = [aux] 
+            # Add unknown
+            contextualized_options["unknown"] = ["it is unknown"]
 
         else:
             raise ValueError("Invalid answer type")

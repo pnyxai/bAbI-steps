@@ -4,7 +4,7 @@ from typing import Callable, get_type_hints
 from babisteps.basemodels.generators import (
     ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
     OrderBaseGenerator, OrderRequest, OrderRequestHow, OrderRequestPolar,
-    OrderRequestWhat)
+    OrderRequestWhat, REPLACE_PLACEHOLDER)
 from babisteps.basemodels.nodes import ImmediateGraph
 
 
@@ -148,22 +148,48 @@ class ImmediateOrder(OrderBaseGenerator):
     def get_json(self):
         json = self.story.create_json()
         options = list(get_type_hints(self.topic)["answer"].__args__)
+        contextualized_options = dict()
         if isinstance(self.topic, OrderRequestPolar):
-            pass
+            contextualized_options["yes"] = ["yes"]
+            contextualized_options["no"] = ["no"]
+            contextualized_options["unknown"] = ["it is unknown"]
         elif isinstance(self.topic, OrderRequestHow):
             options.remove("designated_relation")
-            o = self.topic.get_options(self.model.relations)
-            options.extend(o)
+            aux = self.topic.get_options(self.model.relations)
+            options.extend(aux)
+            contextualized_options["pass"] = aux # Options come with context in this case
+
+            # add unknown case
+            contextualized_options["unknown"] = ["it is unknown"]
+
         elif isinstance(self.topic, OrderRequestWhat):
             options.remove("second_entity")
-            options.extend([e.name for e in self.model.entities])
-            options.remove("none")
-            o = random.choice(ACTORS_NONE_ANSWERS if self.topic.shape_str == (
+            aux = [e.name for e in self.model.entities]
+            options.extend(aux)
+            contextualized_options["second_entity"] = aux 
+
+            aux = random.choice(ACTORS_NONE_ANSWERS if self.topic.shape_str == (
                 "actors", ) else OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
-            options.append(o)
+            options.append(aux)
+            contextualized_options["none"] = [aux] 
+            
+            # add unknown case
+            contextualized_options["unknown"] = ["it is unknown"]
 
         random.shuffle(options)
         json["options"] = options
+
+        # Add contextualized responses
+        json["contextualized_options"] = list()
+        for key in contextualized_options.keys():
+            random.shuffle(contextualized_options[key])
+            for element in contextualized_options[key]:
+                json["contextualized_options"].append(self.story.response_templates[key].replace(REPLACE_PLACEHOLDER, element))
+        json["contextualized_answer"] = list()
+        for element in self.story.answer:
+            json["contextualized_answer"].append(self.story.response_templates[self.topic.answer].replace(REPLACE_PLACEHOLDER, element))
+
+
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)
             if len(parts) == 3:

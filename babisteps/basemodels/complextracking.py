@@ -9,13 +9,12 @@ from babisteps import operators
 from babisteps.basemodels import groups as gr
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, Out, To
 from babisteps.basemodels.generators import (
-    DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS, BaseGenerator)
+    DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS, BaseGenerator, REPLACE_PLACEHOLDER)
 from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         ObjectInLocationState,
                                         ObjectInLocationStatePolar, State)
 from babisteps.basemodels.stories import Story
 
-REPLACE_PLACEHOLDER = "<PLACEHOLDER>"
 
 class ComplexTrackingRequest(BaseModel):
     answer: Any
@@ -1485,6 +1484,7 @@ class ComplexTracking(BaseGenerator):
         if isinstance(self.topic, ObjectInLocationPolar):
             contextualized_options["yes"] = ["yes"]
             contextualized_options["no"] = ["no"]
+            contextualized_options["unknown"] = ["it is unknown"]
         elif isinstance(self.topic, ObjectInLocationWhat):
             options.remove('designated_object')
             aux = [o.name for o in self.model.dim2]
@@ -1492,11 +1492,19 @@ class ComplexTracking(BaseGenerator):
             contextualized_options["designated_object"] = aux 
 
             options.remove('none')
+            contextualized_options["none"] = ["nothing"]
+
+            # add unknown case
+            contextualized_options["unknown"] = ["it is unknown"]
+
         elif isinstance(self.topic, ObjectInLocationWhere):
             options.remove('designated_location')
             aux = [loc.name for loc in self.model.dim0[:self.shape[0] // 2]]
             options.extend(aux)
             contextualized_options["designated_location"] = aux 
+
+            # add unknown case
+            contextualized_options["unknown"] = ["it is unknown"]
 
         random.shuffle(options)
         json["options"] = options
