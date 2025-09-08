@@ -1495,18 +1495,25 @@ class ComplexTracking(BaseGenerator):
         if isinstance(self.topic, ObjectInLocationPolar):
             contextualized_options["yes"] = ["yes"]
             contextualized_options["no"] = ["no"]
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, ObjectInLocationWhat):
             options.remove('designated_object')
             aux = [o.name for o in self.model.dim2]
             options.extend(aux)
-            contextualized_options["designated_object"] = aux
+            contextualized_options["designated_object"] = list()
+            for o in aux:
+                # the designated_object list contains the none-answers,
+                # which have a different context template.
+                if o not in OBJECTS_LOCATION_EVENT_NONE_ANSWERS:
+                    contextualized_options["designated_object"].append(o)
 
             options.remove('none')
-            contextualized_options["none"] = ["nothing"]
+            contextualized_options["none"] = [
+                OBJECTS_LOCATION_EVENT_NONE_ANSWERS[0]
+            ]
 
             # add unknown case
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
 
         elif isinstance(self.topic, ObjectInLocationWhere):
             options.remove('designated_location')
@@ -1515,7 +1522,7 @@ class ComplexTracking(BaseGenerator):
             contextualized_options["designated_location"] = aux
 
             # add unknown case
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
 
         random.shuffle(options)
         json["options"] = options

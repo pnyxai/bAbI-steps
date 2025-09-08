@@ -117,11 +117,11 @@ class ActorWithObjectPolar(SimpleTrackerRequest):
     def get_reponse_tempalte(self):
         return {
             "yes":
-            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} has the {self.entity.name}",
+            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} has got the {self.entity.name}",
             "no":
-            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} has not the {self.entity.name}",
+            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} hasn't got the {self.entity.name}",
             "unknown":
-            f"{REPLACE_PLACEHOLDER} if {self.coordenate.name} has the {self.entity.name}",
+            f"{REPLACE_PLACEHOLDER} if {self.coordenate.name} has got the {self.entity.name}",
         }
 
 
@@ -583,7 +583,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
                       (ActorInLocationPolar, ActorWithObjectPolar)):
             contextualized_options["yes"] = ["yes"]
             contextualized_options["no"] = ["no"]
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, ActorInLocationWho):
             options.remove("designated_entity")
             aux = [e.name for e in self.model.entities]
@@ -603,7 +603,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             options.remove("nowhere")
 
             # Add unknown
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
 
         elif isinstance(self.topic, ActorWithObjectWhat):
             options.remove("designated_object")
@@ -616,7 +616,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             options.append(aux)
             contextualized_options["none"] = [aux]
             # Add unknown
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, ActorWithObjectWho):
             options.remove("designated_actor")
             aux = [c.name for c in self.model.coordenates]
@@ -629,7 +629,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             options.append(aux)
             contextualized_options["none"] = [aux]
             # Add unknown
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
 
         else:
             raise ValueError("Invalid answer type")

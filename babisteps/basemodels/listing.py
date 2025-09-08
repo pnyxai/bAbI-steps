@@ -327,7 +327,7 @@ class Listing(SimpleTrackerBaseGenerator):
             none_option = random.choice(OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
             options = [[none_option]]
 
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
             contextualized_options["none"] = [none_option]
 
         else:
@@ -365,7 +365,8 @@ class Listing(SimpleTrackerBaseGenerator):
                     self.story.response_templates[key].replace(
                         REPLACE_PLACEHOLDER, element))
         json["contextualized_answer"] = list()
-        if self.topic.answer in ["none", "unknown"]:
+        # If this is not a list of elements, it is a special case (like none or unknown)
+        if not isinstance(self.topic.answer, int):
             for element in self.story.answer:
                 json["contextualized_answer"].append(
                     self.story.response_templates[self.topic.answer].replace(

@@ -170,7 +170,7 @@ class GeneralOrder(OrderBaseGenerator):
         if isinstance(self.topic, OrderRequestPolar):
             contextualized_options["yes"] = ["yes"]
             contextualized_options["no"] = ["no"]
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, OrderRequestHow):
             options.remove("designated_relation")
             aux = self.topic.get_options(self.model.relations)
@@ -179,7 +179,7 @@ class GeneralOrder(OrderBaseGenerator):
                 "pass"] = aux  # Options come with context in this case
 
             # add unknown case
-            contextualized_options["unknown"] = ["it is unknown"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
 
         random.shuffle(options)
         json["options"] = options
@@ -194,9 +194,8 @@ class GeneralOrder(OrderBaseGenerator):
                         REPLACE_PLACEHOLDER, element))
         json["contextualized_answer"] = list()
         for element in self.story.answer:
-            if isinstance(self.topic,
-                          OrderRequestHow) and (element
-                                                not in UNKNONW_ANSWERS):
+            if isinstance(self.topic, OrderRequestHow) and (self.topic.answer
+                                                            != "unknown"):
                 json["contextualized_answer"].append(
                     self.story.response_templates["pass"].replace(
                         REPLACE_PLACEHOLDER, element))

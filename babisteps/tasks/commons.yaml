@@ -40,7 +40,6 @@ objects:
   - "spoon"
 events:
   - "party"
-  # - "christmas" # This sounds weird in the context of using "the {event}"
   - "wedding"
   - "funeral"
   - "birthday"
