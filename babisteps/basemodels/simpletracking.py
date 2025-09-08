@@ -5,7 +5,7 @@ from pydantic import BaseModel, model_validator
 
 from babisteps.basemodels.generators import (
     ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
-    UNKNONW_ANSWERS, SimpleTrackerBaseGenerator)
+    REPLACE_PLACEHOLDER, UNKNONW_ANSWERS, SimpleTrackerBaseGenerator)
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
@@ -24,6 +24,9 @@ class SimpleTrackerRequest(BaseModel):
     def get_answer(self):
         pass
 
+    def get_reponse_tempalte(self):
+        pass
+
 
 class ActorInLocationPolar(SimpleTrackerRequest):
     answer: Literal["yes", "no", "unknown"]
@@ -36,6 +39,16 @@ class ActorInLocationPolar(SimpleTrackerRequest):
             return [self.answer]
         elif self.answer == "unknown":
             return UNKNONW_ANSWERS
+
+    def get_reponse_tempalte(self):
+        return {
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} if {self.entity.name} is in the {self.coordenate.name}",
+            "yes":
+            f"{REPLACE_PLACEHOLDER}, {self.entity.name} is in the {self.coordenate.name}",
+            "no":
+            f"{REPLACE_PLACEHOLDER}, {self.entity.name} is not in the {self.coordenate.name}",
+        }
 
 
 class ActorInLocationWho(SimpleTrackerRequest):
@@ -56,6 +69,16 @@ class ActorInLocationWho(SimpleTrackerRequest):
                 "Invalid answer, should be 'designated_entity', 'none' or 'unknown'"
             )
 
+    def get_reponse_tempalte(self):
+        return {
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} who is in the {self.coordenate.name}",
+            "none":
+            f"{REPLACE_PLACEHOLDER} is in the {self.coordenate.name}",
+            "designated_entity":
+            f"{REPLACE_PLACEHOLDER} is in the {self.coordenate.name}",
+        }
+
 
 class ActorInLocationWhere(SimpleTrackerRequest):
     answer: Literal["designated_location", "unknown"]
@@ -73,22 +96,40 @@ class ActorInLocationWhere(SimpleTrackerRequest):
                 "Invalid answer value, should be 'designated_location' or 'unknown'"
             )
 
+    def get_reponse_tempalte(self):
+        return {
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} where {self.entity.name} is",
+            "designated_location":
+            f"{self.entity.name} is in the {REPLACE_PLACEHOLDER}",
+        }
+
 
 class ActorWithObjectPolar(SimpleTrackerRequest):
     answer: Literal["yes", "no"]
 
     def get_question(self):
-        return f"Has {self.coordenate.name} the {self.entity.name}?"
+        return f"Has {self.coordenate.name} got the {self.entity.name}?"
 
     def get_answer(self):
         return [self.answer]
+
+    def get_reponse_tempalte(self):
+        return {
+            "yes":
+            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} has got the {self.entity.name}",
+            "no":
+            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} hasn't got the {self.entity.name}",
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} if {self.coordenate.name} has got the {self.entity.name}",
+        }
 
 
 class ActorWithObjectWhat(SimpleTrackerRequest):
     answer: Literal["designated_object", "none"]
 
     def get_question(self):
-        return f"What has {self.coordenate.name}?"
+        return f"What has {self.coordenate.name} got?"
 
     def get_answer(self) -> list[str]:
         if self.answer == "designated_object":
@@ -100,12 +141,22 @@ class ActorWithObjectWhat(SimpleTrackerRequest):
                 "Invalid answer value, should be 'designated_object' or 'none'"
             )
 
+    def get_reponse_tempalte(self):
+        return {
+            "none":
+            f"{self.coordenate.name} has got {REPLACE_PLACEHOLDER}",
+            "designated_object":
+            f"{self.coordenate.name} has got the {REPLACE_PLACEHOLDER}",
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} what {self.coordenate.name} has got",
+        }
+
 
 class ActorWithObjectWho(SimpleTrackerRequest):
     answer: Literal["designated_actor", "none"]
 
     def get_question(self):
-        return f"Who has the {self.entity.name}?"
+        return f"Who has got the {self.entity.name}?"
 
     def get_answer(self):
         if self.answer == "designated_actor":
@@ -116,6 +167,15 @@ class ActorWithObjectWho(SimpleTrackerRequest):
             raise ValueError(
                 "Invalid answer value, should be 'designated_actor' or 'unknown'"
             )
+
+    def get_reponse_tempalte(self):
+        return {
+            "none": f"{REPLACE_PLACEHOLDER} has got the {self.entity.name}",
+            "designated_actor":
+            f"{REPLACE_PLACEHOLDER} has got the {self.entity.name}",
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} who has got the {self.entity.name}",
+        }
 
 
 # -------------------------
@@ -518,34 +578,78 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         # TODO (Nicolas):
         # Options should be taken randomly from the "none" and "unknown" list of anwers
         options = list(get_type_hints(self.topic)["answer"].__args__)
+        contextualized_options = dict()
         if isinstance(self.topic,
                       (ActorInLocationPolar, ActorWithObjectPolar)):
-            pass
+            contextualized_options["yes"] = ["yes"]
+            contextualized_options["no"] = ["no"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, ActorInLocationWho):
             options.remove("designated_entity")
-            options.extend([e.name for e in self.model.entities])
+            aux = [e.name for e in self.model.entities]
+            options.extend(aux)
+            contextualized_options["designated_entity"] = aux
+
             options.remove("none")
-            options.append(random.choice(ACTORS_NONE_ANSWERS))
+            aux = random.choice(ACTORS_NONE_ANSWERS)
+            options.append(aux)
+            contextualized_options["none"] = [aux]
         elif isinstance(self.topic, ActorInLocationWhere):
             options.remove("designated_location")
-            options.extend([c.name for c in self.model.coordenates])
+            aux = [c.name for c in self.model.coordenates]
+            options.extend(aux)
+            contextualized_options["designated_location"] = aux
+
             options.remove("nowhere")
+
+            # Add unknown
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
+
         elif isinstance(self.topic, ActorWithObjectWhat):
             options.remove("designated_object")
-            options.extend([e.name for e in self.model.entities])
+            aux = [e.name for e in self.model.entities]
+            options.extend(aux)
+            contextualized_options["designated_object"] = aux
+
             options.remove("none")
-            options.append(random.choice(OBJECTS_LOCATION_EVENT_NONE_ANSWERS))
+            aux = random.choice(OBJECTS_LOCATION_EVENT_NONE_ANSWERS)
+            options.append(aux)
+            contextualized_options["none"] = [aux]
+            # Add unknown
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, ActorWithObjectWho):
             options.remove("designated_actor")
-            options.extend([c.name for c in self.model.coordenates])
+            aux = [c.name for c in self.model.coordenates]
+            options.extend(aux)
+            contextualized_options["designated_actor"] = aux
+
             options.remove("none")
             options.remove("nobody")
-            options.append(random.choice(ACTORS_NONE_ANSWERS))
+            aux = random.choice(ACTORS_NONE_ANSWERS)
+            options.append(aux)
+            contextualized_options["none"] = [aux]
+            # Add unknown
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
+
         else:
             raise ValueError("Invalid answer type")
 
         random.shuffle(options)
         json["options"] = options
+
+        # Add contextualized responses
+        json["contextualized_options"] = list()
+        for key in contextualized_options:
+            random.shuffle(contextualized_options[key])
+            for element in contextualized_options[key]:
+                json["contextualized_options"].append(
+                    self.story.response_templates[key].replace(
+                        REPLACE_PLACEHOLDER, element))
+        json["contextualized_answer"] = list()
+        for element in self.story.answer:
+            json["contextualized_answer"].append(
+                self.story.response_templates[self.topic.answer].replace(
+                    REPLACE_PLACEHOLDER, element))
 
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)

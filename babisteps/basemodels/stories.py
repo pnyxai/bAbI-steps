@@ -10,6 +10,7 @@ class Story(BaseModel):
     question: str
     # Union can be a string or a list of strings
     answer: str | list[str]
+    response_templates: dict
 
     def create_json(self):
         dict_json = {}

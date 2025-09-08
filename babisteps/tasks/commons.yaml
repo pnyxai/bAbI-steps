@@ -1,5 +1,5 @@
 task_path: "babisteps/tasks/commons.yaml"
-max_retries: 20
+max_retries: 100
 num_samples_by_task: 500
 verbosity: "ERROR"
 # SimpleTracking and ComplexTracking
@@ -40,7 +40,6 @@ objects:
   - "spoon"
 events:
   - "party"
-  - "christmas"
   - "wedding"
   - "funeral"
   - "birthday"

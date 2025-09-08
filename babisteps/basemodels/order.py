@@ -3,16 +3,13 @@ from typing import Callable, get_type_hints
 
 import networkx as nx
 import numpy as np
-
 from sparse import SparseArray
 
-from babisteps.basemodels.generators import (
-    DELIM,
-    OrderBaseGenerator,
-    OrderRequest,
-    OrderRequestPolar,
-    OrderRequestHow,
-)
+from babisteps.basemodels.generators import (DELIM, REPLACE_PLACEHOLDER,
+                                             UNKNONW_ANSWERS,
+                                             OrderBaseGenerator, OrderRequest,
+                                             OrderRequestHow,
+                                             OrderRequestPolar)
 from babisteps.basemodels.nodes import ImmediateGraph
 
 
@@ -41,29 +38,30 @@ class GeneralOrder(OrderBaseGenerator):
         """
 
         # array possible hops
-        hop_range = range(1, len(self.model.entities)-1)
+        hop_range = range(1, len(self.model.entities) - 1)
         # function that will calculate the total number of edges after
         # initial transitive closure
-        sum_edges = lambda hops: sum(range(hops+2))
+        sum_edges = lambda hops: sum(range(hops + 2))
         # apply the function to the hop_range
         tc_edges = np.vectorize(sum_edges)(hop_range)
         # get the valid hops
-        valid_tc_edges = np.where(tc_edges < self.edge_qty-1)[0]
+        valid_tc_edges = np.where(tc_edges < self.edge_qty - 1)[0]
         hop_range = np.asanyarray(hop_range)[valid_tc_edges]
         # get a random valid hop
         n_hops = random.choice(hop_range)
         # Etities array
         e_array = np.arange(2, len(self.model.entities))
         # get random entities that conform to the hops
-        array_rnd_e = np.random.choice(e_array, max(1, n_hops-1), replace=False)
+        array_rnd_e = np.random.choice(e_array,
+                                       max(1, n_hops - 1),
+                                       replace=False)
         # add e0 and e1 to the array
         array_rnd_e = np.insert(array_rnd_e, 0, 0)
         array_rnd_e = np.append(array_rnd_e, 1)
         return array_rnd_e
 
     def _transitive_reduction(self,
-        g: nx.DiGraph
-    )->tuple[SparseArray,nx.DiGraph]:
+                              g: nx.DiGraph) -> tuple[SparseArray, nx.DiGraph]:
         """
         Perform transitive reduction on the given adjacency matrix and graph.
         """
@@ -72,26 +70,26 @@ class GeneralOrder(OrderBaseGenerator):
         TR.add_edges_from((u, v, g.edges[u, v]) for u, v in TR.edges)
         # Genereate an empty adjacency matrix with graph after
         # transitive reduction
-        am , _= self._create_empty_graph()
+        am, _ = self._create_empty_graph()
         # Fill the adjacency matrix with the edges from the transitive reduction
         for u, v in TR.edges():
             am[u, v] = 1
             am[v, u] = 0
-        return am, TR    
-        
+        return am, TR
+
     def _order_polar(self):
         graphs = []
         e0, e1, r_am, r = self._init_setup()
         if self.topic.answer == "yes":
             array_rnd_e = self._get_rnd_hops()
-            for i_rnd_e in range(len(array_rnd_e)-1):
+            for i_rnd_e in range(len(array_rnd_e) - 1):
                 n_i = array_rnd_e[i_rnd_e]
                 n_f = array_rnd_e[i_rnd_e + 1]
                 r_am[n_i, n_f], r_am[n_f, n_i] = 1, 0
                 r.add_edge(n_i, n_f)
         elif self.topic.answer == "no":
             array_rnd_e = self._get_rnd_hops()
-            for i_rnd_e in range(len(array_rnd_e)-1):
+            for i_rnd_e in range(len(array_rnd_e) - 1):
                 n_i = array_rnd_e[i_rnd_e]
                 n_f = array_rnd_e[i_rnd_e + 1]
                 r_am[n_i, n_f], r_am[n_f, n_i] = 0, 1
@@ -120,7 +118,7 @@ class GeneralOrder(OrderBaseGenerator):
             for i, rlt in enumerate(self.model.relations[1:], start=1):
                 g_am, g = self._create_empty_graph()
                 g_am, g = self._fill_edges(g_am, g, self.edge_qty)
-                g_am, g  = self._transitive_reduction(g)
+                g_am, g = self._transitive_reduction(g)
                 graphs.append(
                     ImmediateGraph(am=g_am, g=g, name=rlt.name, index=i))
         return graphs
@@ -130,7 +128,7 @@ class GeneralOrder(OrderBaseGenerator):
         e0, e1, r_am, r = self._init_setup()
         if self.topic.answer == "designated_relation":
             array_rnd_e = self._get_rnd_hops()
-            for i_rnd_e in range(len(array_rnd_e)-1):
+            for i_rnd_e in range(len(array_rnd_e) - 1):
                 n_i = array_rnd_e[i_rnd_e]
                 n_f = array_rnd_e[i_rnd_e + 1]
                 r_am[n_i, n_f], r_am[n_f, n_i] = 1, 0
@@ -160,7 +158,7 @@ class GeneralOrder(OrderBaseGenerator):
                 g_am, g = self._create_empty_graph()
                 g_am[0, 1], g_am[1, 0] = 0, 0
                 g_am, g = self._fill_edges(g_am, g, self.edge_qty)
-                g_am, g  = self._transitive_reduction(g)
+                g_am, g = self._transitive_reduction(g)
                 graphs.append(
                     ImmediateGraph(am=g_am, g=g, name=rlt.name, index=i))
         return graphs
@@ -168,16 +166,44 @@ class GeneralOrder(OrderBaseGenerator):
     def get_json(self):
         json = self.story.create_json()
         options = list(get_type_hints(self.topic)["answer"].__args__)
+        contextualized_options = dict()
         if isinstance(self.topic, OrderRequestPolar):
-            pass
+            contextualized_options["yes"] = ["yes"]
+            contextualized_options["no"] = ["no"]
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, OrderRequestHow):
             options.remove("designated_relation")
-            o = self.topic.get_options(self.model.relations)
-            options.extend(o)
+            aux = self.topic.get_options(self.model.relations)
+            options.extend(aux)
+            contextualized_options[
+                "pass"] = aux  # Options come with context in this case
 
+            # add unknown case
+            contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
 
         random.shuffle(options)
         json["options"] = options
+
+        # Add contextualized responses
+        json["contextualized_options"] = list()
+        for key in contextualized_options:
+            random.shuffle(contextualized_options[key])
+            for element in contextualized_options[key]:
+                json["contextualized_options"].append(
+                    self.story.response_templates[key].replace(
+                        REPLACE_PLACEHOLDER, element))
+        json["contextualized_answer"] = list()
+        for element in self.story.answer:
+            if isinstance(self.topic, OrderRequestHow) and (self.topic.answer
+                                                            != "unknown"):
+                json["contextualized_answer"].append(
+                    self.story.response_templates["pass"].replace(
+                        REPLACE_PLACEHOLDER, element))
+            else:
+                json["contextualized_answer"].append(
+                    self.story.response_templates[self.topic.answer].replace(
+                        REPLACE_PLACEHOLDER, element))
+
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)
             if len(parts) == 3:
@@ -187,8 +213,7 @@ class GeneralOrder(OrderBaseGenerator):
             else:
                 raise ValueError(
                     f"self.name does not contain exactly three parts "
-                    f"separated by {DELIM}"
-                )
+                    f"separated by {DELIM}")
         else:
             raise ValueError(
                 f"self.name is either None or does not contain the delimiter {DELIM}"
