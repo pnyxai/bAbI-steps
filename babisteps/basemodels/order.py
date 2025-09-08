@@ -8,6 +8,8 @@ from sparse import SparseArray
 
 from babisteps.basemodels.generators import (
     DELIM,
+    REPLACE_PLACEHOLDER,
+    UNKNONW_ANSWERS,
     OrderBaseGenerator,
     OrderRequest,
     OrderRequestPolar,
@@ -168,16 +170,38 @@ class GeneralOrder(OrderBaseGenerator):
     def get_json(self):
         json = self.story.create_json()
         options = list(get_type_hints(self.topic)["answer"].__args__)
+        contextualized_options = dict()
         if isinstance(self.topic, OrderRequestPolar):
-            pass
+            contextualized_options["yes"] = ["yes"]
+            contextualized_options["no"] = ["no"]
+            contextualized_options["unknown"] = ["it is unknown"]
         elif isinstance(self.topic, OrderRequestHow):
             options.remove("designated_relation")
-            o = self.topic.get_options(self.model.relations)
-            options.extend(o)
+            aux = self.topic.get_options(self.model.relations)
+            options.extend(aux)
+            contextualized_options["pass"] = aux # Options come with context in this case
+
+            # add unknown case
+            contextualized_options["unknown"] = ["it is unknown"]
 
 
         random.shuffle(options)
         json["options"] = options
+
+        # Add contextualized responses
+        json["contextualized_options"] = list()
+        for key in contextualized_options.keys():
+            random.shuffle(contextualized_options[key])
+            for element in contextualized_options[key]:
+                json["contextualized_options"].append(self.story.response_templates[key].replace(REPLACE_PLACEHOLDER, element))
+        json["contextualized_answer"] = list()
+        for element in self.story.answer:
+            if isinstance(self.topic, OrderRequestHow) and (element not in UNKNONW_ANSWERS):
+                json["contextualized_answer"].append(self.story.response_templates["pass"].replace(REPLACE_PLACEHOLDER, element))
+            else:
+                json["contextualized_answer"].append(self.story.response_templates[self.topic.answer].replace(REPLACE_PLACEHOLDER, element))
+
+
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)
             if len(parts) == 3:

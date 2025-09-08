@@ -503,8 +503,8 @@ class OrderRequestHow(OrderRequest):
         elif self.shape_str == ("events", ):
             # f"How was the {self.e1.name} related to the {self.e0.name}?"
             return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} if {self.e1.name} was related to the {self.e0.name}",
-                "designated_relation" :f"{self.e1.name} was {REPLACE_PLACEHOLDER} the {self.e0.name}",
+                "unknown" : f"{REPLACE_PLACEHOLDER} if the {self.e1.name} was related to the {self.e0.name}",
+                "designated_relation" :f"the {self.e1.name} was {REPLACE_PLACEHOLDER} the {self.e0.name}",
                 # This is a special case, where the options are already contextualized
                 "pass" : f"{REPLACE_PLACEHOLDER}"
                 }

@@ -2,7 +2,7 @@ import random
 from typing import Callable, get_type_hints
 
 from babisteps.basemodels.generators import (
-    ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
+    ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,UNKNONW_ANSWERS,
     OrderBaseGenerator, OrderRequest, OrderRequestHow, OrderRequestPolar,
     OrderRequestWhat, REPLACE_PLACEHOLDER)
 from babisteps.basemodels.nodes import ImmediateGraph
@@ -187,7 +187,10 @@ class ImmediateOrder(OrderBaseGenerator):
                 json["contextualized_options"].append(self.story.response_templates[key].replace(REPLACE_PLACEHOLDER, element))
         json["contextualized_answer"] = list()
         for element in self.story.answer:
-            json["contextualized_answer"].append(self.story.response_templates[self.topic.answer].replace(REPLACE_PLACEHOLDER, element))
+            if isinstance(self.topic, OrderRequestHow) and (element not in UNKNONW_ANSWERS):
+                json["contextualized_answer"].append(self.story.response_templates["pass"].replace(REPLACE_PLACEHOLDER, element))
+            else:
+                json["contextualized_answer"].append(self.story.response_templates[self.topic.answer].replace(REPLACE_PLACEHOLDER, element))
 
 
         if self.name and DELIM in self.name:
