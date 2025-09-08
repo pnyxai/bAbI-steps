@@ -5,8 +5,8 @@ from typing import Any, Callable, Literal, Optional, Union
 from pydantic import BaseModel, model_validator
 
 from babisteps.basemodels.generators import (
-    DELIM, SimpleTrackerBaseGenerator, ACTORS_NONE_ANSWERS,
-    OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS, REPLACE_PLACEHOLDER)
+    ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
+    REPLACE_PLACEHOLDER, UNKNONW_ANSWERS, SimpleTrackerBaseGenerator)
 from babisteps.basemodels.nodes import Coordenate, Entity
 
 # -------------------------
@@ -52,13 +52,16 @@ class ActorInLocationWho(ListingRequest):
             raise ValueError(
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
             )
-    
+
     def get_reponse_tempalte(self):
         return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} who is in the {self.coordenate.name}",
-                "none" : f"{REPLACE_PLACEHOLDER} is in the {self.coordenate.name}",
-                "designated_entities" : f"{REPLACE_PLACEHOLDER} are in the {self.coordenate.name}",
-            }
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} who is in the {self.coordenate.name}",
+            "none":
+            f"{REPLACE_PLACEHOLDER} is in the {self.coordenate.name}",
+            "designated_entities":
+            f"{REPLACE_PLACEHOLDER} are in the {self.coordenate.name}",
+        }
 
 
 class ActorWithObjectWhat(ListingRequest):
@@ -83,13 +86,16 @@ class ActorWithObjectWhat(ListingRequest):
             raise ValueError(
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
             )
-        
+
     def get_reponse_tempalte(self):
         return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} what has {self.coordenate.name} got",
-                "none" : f"{self.coordenate.name} has got {REPLACE_PLACEHOLDER}",
-                "designated_entities" : f"{self.coordenate.name} have got the {REPLACE_PLACEHOLDER}",
-            }
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} what has {self.coordenate.name} got",
+            "none":
+            f"{self.coordenate.name} has got {REPLACE_PLACEHOLDER}",
+            "designated_entities":
+            f"{self.coordenate.name} have got the {REPLACE_PLACEHOLDER}",
+        }
 
 
 class Listing(SimpleTrackerBaseGenerator):
@@ -326,8 +332,7 @@ class Listing(SimpleTrackerBaseGenerator):
 
         else:
             raise ValueError("Invalid answer type")
-        
-        
+
         o = self.get_random_combinations(n=ANSWER_OPTION_QTY)
         if isinstance(self.topic.answer, int):
             if self.topic.entities is None:
@@ -347,29 +352,33 @@ class Listing(SimpleTrackerBaseGenerator):
                 list_text = f"{lista[0]} and {lista[1]}"
             contextualized_options["designated_entities"].append(list_text)
 
-        
         # Shuffle to avoid bias in the answer order
         random.shuffle(options)
         json["options"] = options
 
         # Add contextualized responses
         json["contextualized_options"] = list()
-        for key in contextualized_options.keys():
+        for key in contextualized_options:
             random.shuffle(contextualized_options[key])
             for element in contextualized_options[key]:
-                json["contextualized_options"].append(self.story.response_templates[key].replace(REPLACE_PLACEHOLDER, element))
+                json["contextualized_options"].append(
+                    self.story.response_templates[key].replace(
+                        REPLACE_PLACEHOLDER, element))
         json["contextualized_answer"] = list()
         if self.topic.answer in ["none", "unknown"]:
             for element in self.story.answer:
-                json["contextualized_answer"].append(self.story.response_templates[self.topic.answer].replace(REPLACE_PLACEHOLDER, element))
+                json["contextualized_answer"].append(
+                    self.story.response_templates[self.topic.answer].replace(
+                        REPLACE_PLACEHOLDER, element))
         else:
             if len(self.story.answer) > 2:
                 list_text = ", ".join(self.story.answer[:-1])
                 list_text += f" and {self.story.answer[-1]}"
             else:
                 list_text = f"{self.story.answer[0]} and {self.story.answer[1]}"
-            json["contextualized_answer"].append(self.story.response_templates["designated_entities"].replace(REPLACE_PLACEHOLDER, list_text))
-
+            json["contextualized_answer"].append(
+                self.story.response_templates["designated_entities"].replace(
+                    REPLACE_PLACEHOLDER, list_text))
 
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)

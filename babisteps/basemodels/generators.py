@@ -11,15 +11,11 @@ from pydantic import BaseModel, Field, model_validator
 from sparse import DOK, SparseArray
 
 from babisteps import logger
-from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, IsRelated, To
-from babisteps.basemodels.nodes import (
-    Coordenate,
-    Entity,
-    EntityInCoordenateState,
-    ImmediateGraph,
-    Relationship,
-    State,
-)
+from babisteps.basemodels.FOL import (FOL, Exists, From, FromTo, In, IsRelated,
+                                      To)
+from babisteps.basemodels.nodes import (Coordenate, Entity,
+                                        EntityInCoordenateState,
+                                        ImmediateGraph, Relationship, State)
 from babisteps.basemodels.stories import Story
 
 DELIM = "_-_"
@@ -394,25 +390,34 @@ class OrderRequestPolar(OrderRequest):
     def get_reponse_tempalte(self):
         if self.shape_str in [("locations", ), ("objects", )]:
             return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} if {self.e0.name} is {self.transition_used} the {self.e1.name}",
-                "yes" : f"{REPLACE_PLACEHOLDER}, the {self.e0.name} is {self.transition_used} the {self.e1.name}",
-                "no" : f"{REPLACE_PLACEHOLDER}, the {self.e0.name} is not {self.transition_used} the {self.e1.name}",
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} if {self.e0.name} is {self.transition_used} the {self.e1.name}",
+                "yes":
+                f"{REPLACE_PLACEHOLDER}, the {self.e0.name} is {self.transition_used} the {self.e1.name}",
+                "no":
+                f"{REPLACE_PLACEHOLDER}, the {self.e0.name} is not {self.transition_used} the {self.e1.name}",
             }
         elif self.shape_str == ("actors", ):
             return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} if {self.e0.name} is {self.transition_used} {self.e1.name}",
-                "yes" : f"{REPLACE_PLACEHOLDER}, {self.e0.name} is {self.transition_used} {self.e1.name}",
-                "no" : f"{REPLACE_PLACEHOLDER}, {self.e0.name} is not {self.transition_used} {self.e1.name}",
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} if {self.e0.name} is {self.transition_used} {self.e1.name}",
+                "yes":
+                f"{REPLACE_PLACEHOLDER}, {self.e0.name} is {self.transition_used} {self.e1.name}",
+                "no":
+                f"{REPLACE_PLACEHOLDER}, {self.e0.name} is not {self.transition_used} {self.e1.name}",
             }
         elif self.shape_str == ("events", ):
             return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} if {self.e0.name} is {self.transition_used} the {self.e1.name}",
-                "yes" : f"{REPLACE_PLACEHOLDER}, the {self.e0.name} was {self.transition_used} the {self.e1.name}",
-                "no" : f"{REPLACE_PLACEHOLDER}, the {self.e0.name} was not {self.transition_used} the {self.e1.name}",
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} if {self.e0.name} is {self.transition_used} the {self.e1.name}",
+                "yes":
+                f"{REPLACE_PLACEHOLDER}, the {self.e0.name} was {self.transition_used} the {self.e1.name}",
+                "no":
+                f"{REPLACE_PLACEHOLDER}, the {self.e0.name} was not {self.transition_used} the {self.e1.name}",
             }
         else:
             raise ValueError("Invalid shape_str for OrderRequestPolar")
-        
+
 
 class OrderRequestHow(OrderRequest):
     answer: Literal["designated_relation", "unknown"]
@@ -482,32 +487,38 @@ class OrderRequestHow(OrderRequest):
         # now set the answer back to its original value
         self.answer = original_answer
         return options
-    
+
     def get_reponse_tempalte(self):
         if self.shape_str in [("locations", ), ("objects", )]:
             # f"How is the {self.e1.name} related to the {self.e0.name}?"
             return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} if the {self.e1.name} is related to the {self.e0.name}",
-                "designated_relation" :f"the {self.e1.name} is {REPLACE_PLACEHOLDER} to the {self.e0.name}",
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} if the {self.e1.name} is related to the {self.e0.name}",
+                "designated_relation":
+                f"the {self.e1.name} is {REPLACE_PLACEHOLDER} to the {self.e0.name}",
                 # This is a special case, where the options are already contextualized
-                "pass" : f"{REPLACE_PLACEHOLDER}"
+                "pass": f"{REPLACE_PLACEHOLDER}"
             }
         elif self.shape_str == ("actors", ):
             # f"How is {self.e1.name} related to {self.e0.name}?"
             return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} if {self.e1.name} is related to the {self.e0.name}",
-                "designated_relation" :f"{self.e1.name} is {REPLACE_PLACEHOLDER} to the {self.e0.name}",
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} if {self.e1.name} is related to the {self.e0.name}",
+                "designated_relation":
+                f"{self.e1.name} is {REPLACE_PLACEHOLDER} to the {self.e0.name}",
                 # This is a special case, where the options are already contextualized
-                "pass" : f"{REPLACE_PLACEHOLDER}"
+                "pass": f"{REPLACE_PLACEHOLDER}"
             }
         elif self.shape_str == ("events", ):
             # f"How was the {self.e1.name} related to the {self.e0.name}?"
             return {
-                "unknown" : f"{REPLACE_PLACEHOLDER} if the {self.e1.name} was related to the {self.e0.name}",
-                "designated_relation" :f"the {self.e1.name} was {REPLACE_PLACEHOLDER} the {self.e0.name}",
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} if the {self.e1.name} was related to the {self.e0.name}",
+                "designated_relation":
+                f"the {self.e1.name} was {REPLACE_PLACEHOLDER} the {self.e0.name}",
                 # This is a special case, where the options are already contextualized
-                "pass" : f"{REPLACE_PLACEHOLDER}"
-                }
+                "pass": f"{REPLACE_PLACEHOLDER}"
+            }
         else:
             raise ValueError("Invalid shape_str for OrderRequestHow")
 
@@ -540,29 +551,37 @@ class OrderRequestWhat(OrderRequest):
         else:
             raise ValueError(
                 "'answer' must be 'second_entity', 'none', or 'unknown'")
-    
+
     def get_reponse_tempalte(self):
         if self.shape_str in [("locations", ), ("objects", )]:
             return {
-                    "unknown" : f"{REPLACE_PLACEHOLDER} to what the {self.e0.name} is {self.transition_used}",
-                    "none" : f"{self.e0.name} is {self.transition_used} {REPLACE_PLACEHOLDER}",
-                    "second_entity" : f"the {self.e0.name} is {self.transition_used} the {REPLACE_PLACEHOLDER}",
-                }
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} to what the {self.e0.name} is {self.transition_used}",
+                "none":
+                f"{self.e0.name} is {self.transition_used} {REPLACE_PLACEHOLDER}",
+                "second_entity":
+                f"the {self.e0.name} is {self.transition_used} the {REPLACE_PLACEHOLDER}",
+            }
         elif self.shape_str == ("actors", ):
             return {
-                    "unknown" : f"{REPLACE_PLACEHOLDER} to who is {self.e0.name} {self.transition_used}",
-                    "none" : f"{self.e0.name} is {self.transition_used} {REPLACE_PLACEHOLDER}",
-                    "second_entity" : f"{self.e0.name} is {self.transition_used} {REPLACE_PLACEHOLDER}",
-                }
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} to who is {self.e0.name} {self.transition_used}",
+                "none":
+                f"{self.e0.name} is {self.transition_used} {REPLACE_PLACEHOLDER}",
+                "second_entity":
+                f"{self.e0.name} is {self.transition_used} {REPLACE_PLACEHOLDER}",
+            }
         elif self.shape_str == ("events", ):
             return {
-                    "unknown" : f"{REPLACE_PLACEHOLDER} to what was {self.e0.name} {self.transition_used}",
-                    "none" : f"{self.e0.name} was {self.transition_used} {REPLACE_PLACEHOLDER}",
-                    "second_entity" : f"{self.e0.name} was {self.transition_used} the {REPLACE_PLACEHOLDER}",
-                }
+                "unknown":
+                f"{REPLACE_PLACEHOLDER} to what was {self.e0.name} {self.transition_used}",
+                "none":
+                f"{self.e0.name} was {self.transition_used} {REPLACE_PLACEHOLDER}",
+                "second_entity":
+                f"{self.e0.name} was {self.transition_used} the {REPLACE_PLACEHOLDER}",
+            }
         else:
             raise ValueError("Invalid shape_str for OrderRequestWhat")
-
 
 
 class OrderModel(BaseModel):

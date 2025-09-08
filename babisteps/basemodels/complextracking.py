@@ -9,7 +9,8 @@ from babisteps import operators
 from babisteps.basemodels import groups as gr
 from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, Out, To
 from babisteps.basemodels.generators import (
-    DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, UNKNONW_ANSWERS, BaseGenerator, REPLACE_PLACEHOLDER)
+    DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, REPLACE_PLACEHOLDER,
+    UNKNONW_ANSWERS, BaseGenerator)
 from babisteps.basemodels.nodes import (Coordenate, Entity,
                                         ObjectInLocationState,
                                         ObjectInLocationStatePolar, State)
@@ -51,10 +52,14 @@ class ObjectInLocationPolar(ComplexTrackingRequest):
 
     def get_reponse_tempalte(self):
         return {
-            "unknown" : f"{REPLACE_PLACEHOLDER} if {self.d2.name} is in the {self.d0.name}",
-            "yes" : f"{REPLACE_PLACEHOLDER}, the {self.d2.name} is in the {self.d0.name}",
-            "no" : f"{REPLACE_PLACEHOLDER}, the {self.d2.name} is not in the {self.d0.name}",
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} if {self.d2.name} is in the {self.d0.name}",
+            "yes":
+            f"{REPLACE_PLACEHOLDER}, the {self.d2.name} is in the {self.d0.name}",
+            "no":
+            f"{REPLACE_PLACEHOLDER}, the {self.d2.name} is not in the {self.d0.name}",
         }
+
 
 class ObjectInLocationWhat(ComplexTrackingRequest):
     answer: Literal["designated_object", "none", "unknown"]
@@ -78,10 +83,14 @@ class ObjectInLocationWhat(ComplexTrackingRequest):
 
     def get_reponse_tempalte(self):
         return {
-            "unknown" : f"{REPLACE_PLACEHOLDER} what is in the {self.d0.name}",
-            "none" : f"{REPLACE_PLACEHOLDER} is in the {self.d0.name}",
-            "designated_object" : f"the {REPLACE_PLACEHOLDER} is in the {self.d0.name}",
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} what is in the {self.d0.name}",
+            "none":
+            f"{REPLACE_PLACEHOLDER} is in the {self.d0.name}",
+            "designated_object":
+            f"the {REPLACE_PLACEHOLDER} is in the {self.d0.name}",
         }
+
 
 class ObjectInLocationWhere(ComplexTrackingRequest):
     answer: Literal["designated_location", "unknown"]
@@ -103,8 +112,10 @@ class ObjectInLocationWhere(ComplexTrackingRequest):
 
     def get_reponse_tempalte(self):
         return {
-            "unknown" : f"{REPLACE_PLACEHOLDER} where the {self.d2.name} is",
-            "designated_location" : f"the {self.d2.name} is in the {REPLACE_PLACEHOLDER}",
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} where the {self.d2.name} is",
+            "designated_location":
+            f"the {self.d2.name} is in the {REPLACE_PLACEHOLDER}",
         }
 
 
@@ -1489,7 +1500,7 @@ class ComplexTracking(BaseGenerator):
             options.remove('designated_object')
             aux = [o.name for o in self.model.dim2]
             options.extend(aux)
-            contextualized_options["designated_object"] = aux 
+            contextualized_options["designated_object"] = aux
 
             options.remove('none')
             contextualized_options["none"] = ["nothing"]
@@ -1501,7 +1512,7 @@ class ComplexTracking(BaseGenerator):
             options.remove('designated_location')
             aux = [loc.name for loc in self.model.dim0[:self.shape[0] // 2]]
             options.extend(aux)
-            contextualized_options["designated_location"] = aux 
+            contextualized_options["designated_location"] = aux
 
             # add unknown case
             contextualized_options["unknown"] = ["it is unknown"]
@@ -1511,14 +1522,17 @@ class ComplexTracking(BaseGenerator):
 
         # Add contextualized responses
         json["contextualized_options"] = list()
-        for key in contextualized_options.keys():
+        for key in contextualized_options:
             random.shuffle(contextualized_options[key])
             for element in contextualized_options[key]:
-                json["contextualized_options"].append(self.story.response_templates[key].replace(REPLACE_PLACEHOLDER, element))
+                json["contextualized_options"].append(
+                    self.story.response_templates[key].replace(
+                        REPLACE_PLACEHOLDER, element))
         json["contextualized_answer"] = list()
         for element in self.story.answer:
-            json["contextualized_answer"].append(self.story.response_templates[self.topic.answer].replace(REPLACE_PLACEHOLDER, element))
-
+            json["contextualized_answer"].append(
+                self.story.response_templates[self.topic.answer].replace(
+                    REPLACE_PLACEHOLDER, element))
 
         if self.name and DELIM in self.name:
             parts = self.name.split(DELIM)

@@ -29,7 +29,7 @@ lm-eval = {git = "git@github.com:EleutherAI/lm-evaluation-harness.git", extras =
 
 [tool.ruff]
 # Allow lines to be as long as 80.
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = [
