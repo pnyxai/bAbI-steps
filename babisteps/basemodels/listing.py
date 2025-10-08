@@ -344,12 +344,16 @@ class Listing(SimpleTrackerBaseGenerator):
                 options.append(anws)
         options.extend(o)
         contextualized_options["designated_entities"] = list()
-        for lista in o:
+        for lista in options:
             if len(lista) > 2:
                 list_text = ", ".join(lista[:-1])
                 list_text += f" and {lista[-1]}"
-            else:
+            elif len(lista) == 2:
                 list_text = f"{lista[0]} and {lista[1]}"
+            elif len(lista) == 1:
+                # this should be the case none or unknown
+                # and do not represent a list of designated
+                continue
             contextualized_options["designated_entities"].append(list_text)
 
         # Shuffle to avoid bias in the answer order

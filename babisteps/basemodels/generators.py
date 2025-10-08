@@ -675,6 +675,23 @@ class OrderBaseGenerator(BaseGenerator):
                 raise ValueError("This should not happen")
             nans = np.argwhere(np.isnan(matrix.todense()))
 
+    def _transitive_reduction(self,
+                              g: nx.DiGraph) -> tuple[SparseArray, nx.DiGraph]:
+        """
+        Perform transitive reduction on the given adjacency matrix and graph.
+        """
+        TR = nx.transitive_reduction(g)
+        TR.add_nodes_from(g.nodes(data=True))
+        TR.add_edges_from((u, v, g.edges[u, v]) for u, v in TR.edges)
+        # Genereate an empty adjacency matrix with graph after
+        # transitive reduction
+        am, _ = self._create_empty_graph()
+        # Fill the adjacency matrix with the edges from the transitive reduction
+        for u, v in TR.edges():
+            am[u, v] = 1
+            am[v, u] = 0
+        return am, TR
+
     def _create_aux(self):
         self.shape = (len(self.model.relations), len(self.model.entities))
         self.shape_str = self.topic.shape_str
