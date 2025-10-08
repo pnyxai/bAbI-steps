@@ -47,6 +47,14 @@ class ImmediateGraph(BaseModel):
         return self
 
 
+class PathFindingGraph(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    am: SparseArray
+    g: nx.Graph
+    name: str
+    index: int
+
+
 class Entity(BaseModel):
     name: str
 

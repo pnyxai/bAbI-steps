@@ -28,10 +28,29 @@ fewshot_config:
 process_results: !function utils.process_results_listing
 """
 
+PATHFINDING_CFG = """\
+fewshot_config:
+  sampler: default
+  doc_to_text: !function utils.listing_fewshot_to_text
+  doc_to_target: ""
+doc_to_text: !function utils.listing_doc_to_text
+process_results: !function utils.process_results_pathfinding
+"""
+
+CHAT_PATHFINDING_CFG = """\
+fewshot_config:
+  sampler: default
+  doc_to_text: !function utils.fewshot_to_text
+  doc_to_target: !function utils.listing_fewshot_doc_to_target
+process_results: !function utils.process_results_pathfinding
+"""
+
 DICT_CFG = {}
 COT_DICT_CFG = {}
 DICT_CFG["4"] = LISTING_CFG
 COT_DICT_CFG["4"] = CHAT_LISTING_CFG
+DICT_CFG["8"] = PATHFINDING_CFG
+COT_DICT_CFG["8"] = CHAT_PATHFINDING_CFG
 
 
 def parse_args():

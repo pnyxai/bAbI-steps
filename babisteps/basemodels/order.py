@@ -1,9 +1,7 @@
 import random
 from typing import Callable, get_type_hints
 
-import networkx as nx
 import numpy as np
-from sparse import SparseArray
 
 from babisteps.basemodels.generators import (DELIM, REPLACE_PLACEHOLDER,
                                              UNKNONW_ANSWERS,
@@ -59,23 +57,6 @@ class GeneralOrder(OrderBaseGenerator):
         array_rnd_e = np.insert(array_rnd_e, 0, 0)
         array_rnd_e = np.append(array_rnd_e, 1)
         return array_rnd_e
-
-    def _transitive_reduction(self,
-                              g: nx.DiGraph) -> tuple[SparseArray, nx.DiGraph]:
-        """
-        Perform transitive reduction on the given adjacency matrix and graph.
-        """
-        TR = nx.transitive_reduction(g)
-        TR.add_nodes_from(g.nodes(data=True))
-        TR.add_edges_from((u, v, g.edges[u, v]) for u, v in TR.edges)
-        # Genereate an empty adjacency matrix with graph after
-        # transitive reduction
-        am, _ = self._create_empty_graph()
-        # Fill the adjacency matrix with the edges from the transitive reduction
-        for u, v in TR.edges():
-            am[u, v] = 1
-            am[v, u] = 0
-        return am, TR
 
     def _order_polar(self):
         graphs = []

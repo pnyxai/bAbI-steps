@@ -1,0 +1,6 @@
+task_name: pathfinding
+relations_qty: 2
+entities: 10
+max_path_length: 5
+gen_kwargs:
+func: utils._get_generators
