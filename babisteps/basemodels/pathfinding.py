@@ -1,25 +1,21 @@
 import random
-from itertools import combinations
 from abc import abstractmethod
-from typing import Any, Callable, Literal, Optional, Union, get_type_hints
+from itertools import combinations
+from typing import Any, Callable, Literal, Optional, Union
 
 import networkx as nx
 import numpy as np
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 from sparse import DOK, SparseArray
 
-from babisteps.basemodels.generators import (
-    DELIM,
-    OrderBaseGenerator,
-    UNKNONW_ANSWERS,
-    REPLACE_PLACEHOLDER,
-)
-
+from babisteps.basemodels.generators import (DELIM, REPLACE_PLACEHOLDER,
+                                             UNKNONW_ANSWERS,
+                                             OrderBaseGenerator)
 from babisteps.basemodels.listing import ANSWER_OPTION_QTY
-
-from babisteps.basemodels.nodes import Entity, PathFindingGraph, Relationship
+from babisteps.basemodels.nodes import Entity, PathFindingGraph
 
 MAX_ATTEMPTS_MULTIPLIER = 10
+
 
 class PathFindingRequest(BaseModel):
     answer: Any
@@ -40,25 +36,25 @@ class PathFindingRequest(BaseModel):
         """Abstract method to generate the answer context template"""
         pass
 
+
 class PathFindingRequestWhich(PathFindingRequest):
     answer: Union[int, Literal["unknown"]]
     path: Optional[list[Entity]] = None
     path_graph: Optional[PathFindingGraph] = None
     relation_type: Literal["absolute_position"]
-    shape_str: tuple[Literal[("locations",)]] = ("locations",)
+    shape_str: tuple[Literal[("locations", )]] = ("locations", )
     # NOTE: `relations` nomeclature is as follow:
     # [r_{i}, (l_{j}, l_{j+1}), r_{i+1}, (l_{j+1}, l_{j+2})...]
     # where r_{i} is the index of the relation
     # and l_{j}, l_{j+1} are the indexes of the consecutive relations
     relations: Optional[list[list]] = None
 
-
     def get_question(self):
         question_template = "Which path goes from the {p} to the {q}?"
         p = self.path[0].name
         q = self.path[-1].name
         return question_template.format(p=p, q=q)
-        
+
     def get_answer(self) -> list[str]:
         if self.answer == "unknown":
             return UNKNONW_ANSWERS
@@ -67,11 +63,12 @@ class PathFindingRequestWhich(PathFindingRequest):
 
     def get_reponse_tempalte(self):
         return {
-            "unknown": 
-            f"{REPLACE_PLACEHOLDER} how to get from {self.path[0].name} to {self.path[-1].name}.",
-            "path": 
-            f"The path that goes from {self.path[0].name} to {self.path[-1].name} is: {REPLACE_PLACEHOLDER}."
+            "unknown":
+            f"{REPLACE_PLACEHOLDER} how to get from the {self.path[0].name} to the {self.path[-1].name}.",
+            "path":
+            f"The path that goes from the {self.path[0].name} to the {self.path[-1].name} is: {REPLACE_PLACEHOLDER}."
         }
+
 
 class PathFinding(OrderBaseGenerator):
     graphs: Optional[list[PathFindingGraph]] = None
@@ -124,8 +121,8 @@ class PathFinding(OrderBaseGenerator):
             List of n random combinations (as lists)
         """
         string_list = [e.name for e in self.model.entities]
-        e_i= self.topic.path[0].name
-        e_f= self.topic.path[-1].name
+        e_i = self.topic.path[0].name
+        e_f = self.topic.path[-1].name
         string_list.remove(e_i)
         string_list.remove(e_f)
         # Calculate total possible combinations: 2^len(string_list)
@@ -150,9 +147,10 @@ class PathFinding(OrderBaseGenerator):
             result.add(comb)
 
         # Convert set of tuples back to list of lists
-        return [list(comb) for comb in result]    
+        return [list(comb) for comb in result]
 
-    def _extend_preserving_unique_path(self, connections_am, connections_g, edge_qty) -> tuple[DOK, nx.Graph]:
+    def _extend_preserving_unique_path(self, connections_am, connections_g,
+                                       edge_qty) -> tuple[DOK, nx.Graph]:
         """
         REQUIRES: connections_am.width = connections_am.height
         Add edges (randomly) to connections_g one at a time checking that with each addition there is one and only
@@ -161,12 +159,12 @@ class PathFinding(OrderBaseGenerator):
         """
         attempts = 0
         max_attempts = edge_qty * MAX_ATTEMPTS_MULTIPLIER  # Arbitrary limit to prevent infinite loops
-        current_edge_qty_am = np.sum((connections_am > 0).to_coo()) // 2  # Each edge is counted twice in an undirected graph
+        current_edge_qty_am = np.sum((connections_am > 0).to_coo(
+        )) // 2  # Each edge is counted twice in an undirected graph
         current_edge_qty = connections_g.number_of_edges()
         assert current_edge_qty_am == current_edge_qty, (
             f"Mismatch between adjacency matrix edges and graph edges: "
-            f"{current_edge_qty_am} vs {current_edge_qty}"
-        )
+            f"{current_edge_qty_am} vs {current_edge_qty}")
         while current_edge_qty < edge_qty and attempts < max_attempts:
             # Randomly select two distinct nodes
             n1, n2 = random.sample(range(connections_am.shape[0]), 2)
@@ -176,18 +174,25 @@ class PathFinding(OrderBaseGenerator):
                 continue
             # Only consider adding the edge if it doesn't already exist
             if connections_am[n1, n2] != 1:
-                self.logger.debug("Connections between %s and %s is currently %s", n1, n2, connections_am[n1, n2])
+                self.logger.debug(
+                    "Connections between %s and %s is currently %s", n1, n2,
+                    connections_am[n1, n2])
                 # Add the edge temporarily
                 connections_g.add_edge(n1, n2)
                 # Check if there is exactly one path from start to end
                 try:
-                    paths = list(nx.all_simple_paths(connections_g, source=0, target=self.path_length-1))
+                    paths = list(
+                        nx.all_simple_paths(connections_g,
+                                            source=0,
+                                            target=self.path_length - 1))
                     if len(paths) == 1:
                         # If there is exactly one path, make the addition permanent
                         connections_am[n1, n2] = 1
                         connections_am[n2, n1] = 1
                         current_edge_qty += 1
-                        self.logger.debug("Successfully added edge between %s and %s (attempt %d)", n1, n2, attempts)
+                        self.logger.debug(
+                            "Successfully added edge between %s and %s (attempt %d)",
+                            n1, n2, attempts)
                     else:
                         # Otherwise, remove the edge
                         connections_g.remove_edge(n1, n2)
@@ -197,8 +202,10 @@ class PathFinding(OrderBaseGenerator):
             attempts += 1
 
         if attempts == max_attempts:
-            self.logger.error("Max attempts reached while extending the graph.")
-            raise RuntimeError("Failed to extend graph while preserving unique path.")
+            self.logger.error(
+                "Max attempts reached while extending the graph.")
+            raise RuntimeError(
+                "Failed to extend graph while preserving unique path.")
         return connections_am, connections_g
 
     def _path_finding_which(self):
@@ -229,14 +236,16 @@ class PathFinding(OrderBaseGenerator):
             # number_of_subtractions = choose([1, path_length - 1])
             number_of_subtractions = random.randint(1, path_len - 1)
             # Decide links from what locations to disconnect (sampling without replacement)
-            subtractions = random.sample(range(0, path_len), number_of_subtractions)
+            subtractions = random.sample(range(0, path_len),
+                                         number_of_subtractions)
         else:
             number_of_subtractions = 0
             subtractions = []
 
         try:
             # Add connections while preserving a unique path
-            c_am, c = self._extend_preserving_unique_path(c_am, c, self.edge_qty + number_of_subtractions)
+            c_am, c = self._extend_preserving_unique_path(
+                c_am, c, self.edge_qty + number_of_subtractions)
         except Exception as e:
             self.logger.error("Error while extending graph: %s", e)
             raise e
@@ -254,7 +263,8 @@ class PathFinding(OrderBaseGenerator):
                 if c_am[i, j] == 1:
 
                     # choose relation in Relation:
-                    r_index, relation_i, r_am_i, r_i = random.choice(relation_elements)
+                    r_index, relation_i, r_am_i, r_i = random.choice(
+                        relation_elements)
                     if i == j + 1 and self.topic.answer != "unknown":
                         relation_index_result.append([r_index, (i, j)])
                     if random.random() > 0.5:
@@ -278,9 +288,14 @@ class PathFinding(OrderBaseGenerator):
                             if other_r.has_edge(j, i):
                                 other_r.remove_edge(j, i)
 
-        for i, (r_index, relation_i, r_am_i, r_i) in enumerate(relation_elements):
-            graphs.append(PathFindingGraph(am=r_am_i, g=r_i, name=relation_i.name, index=i))
-    
+        for i, (r_index, relation_i, r_am_i,
+                r_i) in enumerate(relation_elements):
+            graphs.append(
+                PathFindingGraph(am=r_am_i,
+                                 g=r_i,
+                                 name=relation_i.name,
+                                 index=i))
+
         self.topic.path_graph = graphs
         self.topic.relations = relation_index_result
 
@@ -294,7 +309,7 @@ class PathFinding(OrderBaseGenerator):
             unknown_option = random.choice(UNKNONW_ANSWERS)
             contextualized_options["unknown"] = [unknown_option]
             options.append([unknown_option])
-            
+
         else:
             raise ValueError("Invalid topic type for PathFinding generator")
 
@@ -310,11 +325,12 @@ class PathFinding(OrderBaseGenerator):
             # if is not in the options, add it
             if anws not in options:
                 options.append(anws)
-   
+
         e_i = self.topic.path[0].name
         e_f = self.topic.path[-1].name
         # adding to all elements in options
-        options = [ [e_i] + opt + [e_f] if len(opt)>=2 else opt for opt in options]
+        options = [[e_i] + opt + [e_f] if len(opt) >= 2 else opt
+                   for opt in options]
 
         # Shuffle to avoid bias in the answer order
         random.shuffle(options)
@@ -332,7 +348,8 @@ class PathFinding(OrderBaseGenerator):
                 continue
             else:
                 # should not happen, then raise an error
-                raise ValueError("Options with only two elements should not happen")
+                raise ValueError(
+                    "Options with only two elements should not happen")
 
         # Add contextualized responses
         json["contextualized_options"] = list()
@@ -363,8 +380,12 @@ class PathFinding(OrderBaseGenerator):
                 json["leaf_label"] = parts[1]
                 json["leaf_index"] = parts[2]
             else:
-                raise ValueError(f"self.name does not contain exactly three parts separated by {DELIM}")
+                raise ValueError(
+                    f"self.name does not contain exactly three parts separated by {DELIM}"
+                )
         else:
-            raise ValueError(f"self.name is either None or does not contain the delimiter {DELIM}")
+            raise ValueError(
+                f"self.name is either None or does not contain the delimiter {DELIM}"
+            )
 
         return json
