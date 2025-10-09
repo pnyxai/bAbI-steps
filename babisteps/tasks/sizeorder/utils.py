@@ -7,26 +7,23 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from babisteps.basemodels.generators import (
-    DELIM,
-    OrderModel,
-    OrderRequestHow,
-    OrderRequestPolar,
-)
-from babisteps.tasks.immediateorder.utils import relations_type_to_entities_dict
-from babisteps.basemodels.order import GeneralOrder
+from babisteps.basemodels.generators import (DELIM, OrderModel,
+                                             OrderRequestHow,
+                                             OrderRequestPolar)
 from babisteps.basemodels.nodes import Entity
+from babisteps.basemodels.order import GeneralOrder
 from babisteps.proccesing import prepare_path
-from babisteps.utils import generate_framework
 from babisteps.tasks.immediateorder.utils import (
-    _get_relations_by_type, _get_list_relations
-)
+    _get_list_relations, _get_relations_by_type,
+    relations_type_to_entities_dict)
+from babisteps.utils import generate_framework
 
 yaml_path = Path(__file__).parent / "config.yaml"
 task_leaf_list = [
     OrderRequestPolar,
     OrderRequestHow,
 ]
+
 
 def _get_generators(**kwargs):
     # Commons
@@ -63,8 +60,7 @@ def _get_generators(**kwargs):
             relation_types_compatibility,
         )
         # Get entities compatible with the selected relation type
-        entity_type = random.choice(
-            relations_type_to_entities_dict[r_type_g])
+        entity_type = random.choice(relations_type_to_entities_dict[r_type_g])
         local_entities = kwargs.get(entity_type)
         entities = np.random.choice(local_entities,
                                     size=n_entities,
@@ -72,8 +68,7 @@ def _get_generators(**kwargs):
         entities = [Entity(name=entity) for entity in entities]
 
         # Create the model
-        model = OrderModel(entities=entities,
-                                    relations=relations)
+        model = OrderModel(entities=entities, relations=relations)
         runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
         # Complete the topic
         topic = leaf(

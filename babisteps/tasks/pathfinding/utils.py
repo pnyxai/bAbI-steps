@@ -79,8 +79,7 @@ def _get_generators(**kwargs):
 
         # Create the model
         model = OrderModel(entities=entities, relations=relations)
-        runtime_name = leaf.__name__ + DELIM + str(
-            answer) + DELIM + str(i)
+        runtime_name = leaf.__name__ + DELIM + str(answer) + DELIM + str(i)
         # Complete the topic
         topic = leaf(
             answer=answer,

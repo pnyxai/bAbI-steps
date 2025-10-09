@@ -1,25 +1,15 @@
 import json
-import os
+import random
 import shutil
-from copy import deepcopy
 from pathlib import Path
-from typing import Optional, get_args
 
-from babisteps.basemodels.complextracking import (ComplexTracking,
-                                                  ObjectInLocationPolar,
-                                                  ObjectInLocationWhat,
-                                                  ObjectInLocationWhere,
-                                                  ObjectsInLocation)
-from babisteps.basemodels.nodes import Coordenate, Entity
-from babisteps.basemodels.simpletracking import (ActorInLocationPolar,
-                                                 ActorInLocationWhere,
-                                                 ActorInLocationWho,
-                                                 ActorWithObjectPolar,
-                                                 ActorWithObjectWhat,
-                                                 ActorWithObjectWho,
-                                                 EntitiesInCoordenates,
-                                                 SimpleTracker)
-from babisteps.utils import simple_parse_args_string
+import numpy as np
+
+from babisteps import logger
+from babisteps import utils as ut
+
+# Global constants
+SPLITS = ["test", "train", "validation"]
 
 
 def prepare_path(path: Path,
@@ -107,169 +97,6 @@ def save_as_txt(text: str, folder_path: Path, logger, filename="output.txt"):
         raise e
 
 
-def create_simpletracking(
-    q_stories: int,
-    states_qty: int,
-    locations: list[str],
-    actors: list[str],
-    objects: list[str],
-    question: str,
-    answer: str,
-    path: Path,
-    verbosity,
-    logger,
-    gen_kwargs: Optional[str] = None,
-):
-
-    if gen_kwargs is not None:
-        gen_kwargs = simple_parse_args_string(gen_kwargs)
-        if gen_kwargs == "":
-            gen_kwargs = None
-        else:
-            logger.info("Parsed generator kwargs", kwargs=gen_kwargs)
-
-    # constraing to Actors in Location, then objects is empty
-    if locations and actors and not objects:
-        question_request = {
-            "polar": ActorInLocationPolar,
-            "who": ActorInLocationWho,
-            "where": ActorInLocationWhere,
-        }
-        shape_str = ("locations", "actors")
-        entities = [Entity(name=entity) for entity in actors]
-        coordenates = [Coordenate(name=coordenate) for coordenate in locations]
-        model = EntitiesInCoordenates(entities=entities,
-                                      coordenates=coordenates)
-    elif actors and objects and not locations:
-        question_request = {
-            "polar": ActorWithObjectPolar,
-            "what": ActorWithObjectWhat,
-            "who": ActorWithObjectWho,
-        }
-        shape_str = ("actors", "objects")
-        entities = [Entity(name=entity) for entity in objects]
-        coordenates = [Coordenate(name=coordenate) for coordenate in actors]
-        model = EntitiesInCoordenates(entities=entities,
-                                      coordenates=coordenates)
-
-    request = question_request[question]
-    folder_name = request.__name__
-    assert question in question_request, f"Question {question} not valid"
-    answer_options = list(get_args(request.__annotations__["answer"]))
-    assert answer in answer_options, (
-        f"Answer '{answer}' not valid for '{question}'",
-        f"Valid answers are {answer_options}.",
-    )
-
-    folder_path = prepare_path(path, folder_name, logger)
-    topic = request(answer=answer)
-
-    jsonl_dataset = []
-    txt_dataset = ""
-    for s in range(q_stories):
-        logger.info("Creating story", story=s)
-        generator = SimpleTracker(
-            model=deepcopy(model)._shuffle(),
-            states_qty=states_qty,
-            topic=topic,
-            verbosity=verbosity,
-            shape_str=shape_str,
-            log_file=os.path.join(path, "logs.txt"),
-            # add only if gen_kwargs is not None
-            **gen_kwargs if gen_kwargs is not None else {},
-        )
-        generator.create_ontology()
-        generator.create_fol()
-
-        json = generator.story.create_json()
-        json["id"] = s
-        txt = generator.story.create_txt()
-        jsonl_dataset.append(json)
-        txt_dataset += txt
-    logger.info("End of stories creation")
-    return jsonl_dataset, txt_dataset, folder_path
-
-
-def create_complextracking(
-    q_stories: int,
-    states_qty: int,
-    locations: list[str],
-    actors: list[str],
-    objects: list[str],
-    question: str,
-    answer: str,
-    path: Path,
-    verbosity,
-    logger,
-    gen_kwargs: Optional[str] = None,
-):
-
-    if gen_kwargs is not None:
-        gen_kwargs = simple_parse_args_string(gen_kwargs)
-        if gen_kwargs == "":
-            gen_kwargs = None
-        else:
-            logger.info("Parsed generator kwargs", kwargs=gen_kwargs)
-    question_request = {
-        "polar": ObjectInLocationPolar,
-        "what": ObjectInLocationWhat,
-        "where": ObjectInLocationWhere,
-    }
-    shape_str = ("locations", "actors", "objects")
-    d0 = [Coordenate(name=coordenate) for coordenate in locations]
-    d1 = [Coordenate(name=entity) for entity in actors]
-    d2 = [Entity(name=entity) for entity in objects]
-    model = ObjectsInLocation(dim0=d0, dim1=d1, dim2=d2)
-
-    request = question_request[question]
-    folder_name = request.__name__
-    assert question in question_request, f"Question {question} not valid"
-    answer_options = list(get_args(request.__annotations__["answer"]))
-    assert answer in answer_options, (
-        f"Answer '{answer}' not valid for '{question}'",
-        f"Valid answers are {answer_options}.",
-    )
-    folder_path = prepare_path(path, folder_name, logger)
-    topic = request(answer=answer)
-
-    jsonl_dataset = []
-    txt_dataset = ""
-    max_retries = gen_kwargs.get("max_retries",
-                                 10) if gen_kwargs is not None else 10
-    for s in range(q_stories):
-        logger.info("Creating story", story=s)
-        retries = 0
-        while retries < max_retries:
-            try:
-                generator = ComplexTracking(
-                    model=deepcopy(model)._shuffle(),
-                    states_qty=states_qty,
-                    topic=topic,
-                    verbosity=verbosity,
-                    shape_str=shape_str,
-                    log_file=os.path.join(path, "logs.txt"),
-                    # add only if gen_kwargs is not None
-                    **gen_kwargs if gen_kwargs is not None else {},
-                )
-                generator.create_ontology()
-                generator.create_fol()
-                break
-            except Exception as e:
-                logger.error("Error creating story", error=str(e))
-                retries += 1
-        if retries >= max_retries:
-            logger.error("Max retries reached. Skipping story", story=s)
-            raise Exception("Max retries reached. Skipping story")
-
-        json = generator.story.create_json()
-        txt = generator.story.create_txt()
-        json["id"] = s
-        jsonl_dataset.append(json)
-        txt_dataset += txt
-    logger.info("End of stories creation")
-    return jsonl_dataset, txt_dataset, folder_path
-
-
 def _run_generation(g, yaml_cfg):
     retries = 0
     while retries < yaml_cfg["max_retries"]:
@@ -280,8 +107,153 @@ def _run_generation(g, yaml_cfg):
             g = g.recreate()
             retries += 1
     if retries >= yaml_cfg["max_retries"]:
-        raise Exception("Max retries reached from the same seeded generator. Skipping story")
+        raise Exception(
+            "Max retries reached from the same seeded generator. Skipping story"
+        )
 
     json = g.get_json()
     txt = g.get_txt()
+    g.close_logger()
     return json, txt
+
+
+def process_single_task(task_name_i,
+                        task_path_i,
+                        yaml_cfg,
+                        log_queue,
+                        seed_offset,
+                        optimistic_generation=True):
+    """Process a single task - designed to run in a separate process.
+    
+    Args:
+        task_name_i: Name of the task to process
+        task_path_i: Path to the task configuration
+        yaml_cfg: Configuration dictionary
+        log_queue: Queue for logging messages
+        seed_offset: Offset to add to random seeds for this process
+        optimistic_generation: If True, skip failed samples. If False, raise exception on failure.
+    """
+    task_logger = logger.QueueLogger(log_queue, task_name_i)
+
+    # Set seeds with offset for this process
+    if yaml_cfg.get('seed') is not None:
+        random.seed(yaml_cfg['seed'] + seed_offset)
+    if yaml_cfg.get('numpy_random_seed') is not None:
+        np.random.seed(yaml_cfg['numpy_random_seed'] + seed_offset)
+
+    task_logger.info("Running task %s", task_name_i)
+    func_i = ut.load_function_from_config(task_path_i)
+
+    jsonl_file_paths = {}
+    max_generator_rebuildings = yaml_cfg.get("max_generator_rebuildings")
+
+    # Process each split
+    for split in SPLITS:
+        jsonl_dataset = []
+        txt_dataset = ""
+        framework, generator_func, folder_path = func_i(**yaml_cfg)
+
+        if split == "test":
+            task_logger.info("STARTING NEW TASK:",
+                             task=task_name_i,
+                             split=split)
+        idx = 0
+        list_to_retry = []
+        # Iterate over all leaves
+        for leaf, answer, count in framework:
+            if split == "test":
+                task_logger.info("Starting new leaf's generation",
+                                 task=task_name_i,
+                                 leaf=leaf.__name__,
+                                 answer=answer,
+                                 count=count)
+            # Generate samples for this leaf
+            for i in range(count):
+                if idx == 50 and split != "test":
+                    break
+                # get generator
+                g = generator_func(leaf, answer, i)
+                generations_tries = 0
+                story_completed = False
+                # Try generating the story with retries
+                while generations_tries < max_generator_rebuildings:
+                    try:
+                        json_i, txt_i = _run_generation(g, yaml_cfg)
+                        story_completed = True
+                        break
+                    except Exception as e:
+                        generations_tries += 1
+                        task_logger.debug(str(e),
+                                          task=task_name_i,
+                                          leaf=leaf.__name__,
+                                          answer=answer,
+                                          idx=idx,
+                                          i=i)
+
+                        if generations_tries == max_generator_rebuildings:
+                            json_i, txt_i = None, None
+
+                            if not optimistic_generation:
+                                # Non-optimistic mode: fail the entire process
+                                task_logger.error(
+                                    "Max tries reached even for differents seeded generator. Failing process.",
+                                    task=task_name_i,
+                                    leaf=leaf.__name__,
+                                    answer=answer,
+                                    idx=idx,
+                                    i=i)
+                                error_details = (
+                                    f"Generation failed for task '{task_name_i}', "
+                                    f"leaf '{leaf.__name__}', answer '{answer}', "
+                                    f"idx={idx}, i={i}. Max retries ({max_generator_rebuildings}) reached."
+                                )
+                                raise RuntimeError(error_details) from None
+                            else:
+                                # Optimistic mode: skip and continue
+                                task_logger.error(
+                                    "Max tries reached even for differents seeded generator. Skipping sample",
+                                    task=task_name_i,
+                                    leaf=leaf.__name__,
+                                    answer=answer,
+                                    idx=idx,
+                                    i=i)
+                            break
+
+                if story_completed is False:
+                    element_to_retry = (split, leaf, answer, idx, i)
+                    list_to_retry.append(element_to_retry)
+                else:
+                    json_i['idx'] = idx
+                    jsonl_dataset.append(json_i)
+                    txt_dataset += txt_i
+                idx += 1
+
+                if split == "test" and idx % (
+                        yaml_cfg["num_samples_by_task"] // 10) == 0:
+                    percentage = (idx / yaml_cfg["num_samples_by_task"]) * 100
+                    percentage = "{:.0f}%".format(percentage)
+                    task_logger.info("Progress",
+                                     task=task_name_i,
+                                     percentage=percentage)
+
+        try:
+            jsonl_file_path_i = save_as_jsonl(jsonl_dataset,
+                                              folder_path,
+                                              None,
+                                              filename=f"{split}.jsonl")
+            jsonl_file_paths[split] = jsonl_file_path_i
+            save_as_txt(txt_dataset,
+                        folder_path,
+                        None,
+                        filename=f"{split}.txt")
+        except Exception as e:
+            task_logger.error("Error saving dataset",
+                              task=task_name_i,
+                              error=str(e))
+            raise Exception("Error saving dataset") from e
+
+        if split == "test":
+            task_logger.info("SUCCESS Generation", task=task_name_i)
+
+    return task_name_i, jsonl_file_paths.get(
+        "test")  # Return for dataset creation

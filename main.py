@@ -1,12 +1,12 @@
 import argparse
-import logging
 import os
-import random
+import shutil
+import sys
 import time
 from datetime import datetime
+from multiprocessing import Manager, Process, Queue
 from pathlib import Path
 
-import numpy as np
 import yaml
 
 from babisteps import datasets as ds
@@ -15,29 +15,9 @@ from babisteps import proccesing as proc
 from babisteps import utils as ut
 
 
-def split_or_empty(value):
-    return value.split(",") if value else []
-
-
-def replace_path_in_file(file_path, new_path, logger):
-    """Reads a file, replaces the placeholder, and writes the changes back."""
-    try:
-        with open(file_path) as f:
-            content = f.read()
-        # Conver new path to absolute path
-        abs_new_path = os.path.abspath(new_path)
-        modified_content = content.replace("<PATH/TO/REPLACE>", abs_new_path)
-        with open(file_path, 'w') as f:
-            f.write(modified_content)
-        logger.info("Placeholder replaced", file_path=file_path)
-        return True
-    except FileNotFoundError:
-        logger.error("File not found at path", file_path=file_path)
-        return False
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Create a dataset of stories")
+    parser = argparse.ArgumentParser(
+        description="Create a dataset of stories (multiprocessing version)")
     parser.add_argument(
         "--task_path",
         type=str,
@@ -46,7 +26,7 @@ def main():
     )
     parser.add_argument(
         "--tasks",
-        type=split_or_empty,
+        type=ut.split_or_empty,
         default=["all"],
         help="List of the taks name to run the experiments",
     )
@@ -81,6 +61,23 @@ def main():
         metavar="CRITICAL|ERROR|WARNING|INFO|DEBUG",
         help="Controls the reported logging error level.",
     )
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=1,
+        help=
+        "Number of parallel workers for task processing. Set to 1 to disable parallelization.",
+    )
+    parser.add_argument(
+        "--optimistic_generation",
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help=
+        ("If 1 (default), skip failed samples and continue. "
+         "If 0, fail the entire process when max generation retries are reached."
+         ),
+    )
     args = parser.parse_args()
 
     # Get base output folder path
@@ -99,21 +96,28 @@ def main():
     jsonl_path = Path(os.path.join(output_path, "jsonl"))
     if not os.path.exists(jsonl_path):
         os.mkdir(jsonl_path)
-    # init of jsonl_path
+
     start_time = time.time()
-    main_logger = logger.get_logger(
-        "main",
-        level=getattr(logging, f"{args.verbosity}"),
-        log_file=os.path.join(output_path, "logs.txt"),
-    )
+
+    # Setup logging queue and process
+    log_queue = Queue()
+    log_file = os.path.join(output_path, "logs.txt")
+    log_process = Process(target=logger.logger_process,
+                          args=(log_queue, log_file, args.verbosity))
+    log_process.start()
+
+    main_logger = logger.QueueLogger(log_queue)
+
     task_path = Path(args.task_path)
     if not os.path.exists(task_path):
         raise ValueError(f"Path {task_path} does not exist")
+
     # get task_folders as the folder inside the task_path (each element as Path)
     task_folders = [f for f in task_path.iterdir() if f.is_dir()]
     common_yaml = task_path / "commons.yaml"
     if not os.path.exists(common_yaml):
         raise ValueError(f"File {common_yaml} does not exist")
+
     # load common.yaml
     with open(common_yaml) as stream:
         try:
@@ -122,143 +126,149 @@ def main():
             print(exc)
             raise ValueError(f"Error loading {common_yaml}") from exc
 
-    # update yaml_cfg with output_path
     yaml_cfg["output_path"] = jsonl_path
+    yaml_cfg["seed"] = args.seed
+    yaml_cfg["numpy_random_seed"] = args.numpy_random_seed
+
     task_path_dict = ut.create_task_path_dict(args.tasks, task_folders,
                                               main_logger)
 
     seed_message = []
     if args.seed is not None:
-        # See https://github.com/EleutherAI/lm-evaluation-harness/pull/1412
         seed_message.append(f"Setting random seed to {args.seed}")
-        random.seed(args.seed)
-
     if args.numpy_random_seed is not None:
         seed_message.append(f"Setting numpy seed to {args.numpy_random_seed}")
-        np.random.seed(args.numpy_random_seed)
     if seed_message:
         main_logger.info(" | ".join(seed_message))
 
-    jsonl_path_dict = {}
-    max_generator_rebuildings = yaml_cfg.get("max_generator_rebuildings")
-    for task_name_i, task_path_i in task_path_dict.items():
-        main_logger.info("Running task %s", task_name_i)
-        splits = ["test", "train", "validation"]
-        func_i = ut.load_function_from_config(task_path_i)
-        for split in splits:
-            jsonl_dataset = []
-            txt_dataset = ""
-            framework, generator_func, folder_path = func_i(**yaml_cfg)
-            if split == "test":
-                main_logger.info("STARTING NEW TASK:",
-                                task=task_name_i,
-                                split=split)
-            idx = 0
-            list_to_retry = []
-            for leaf, answer, count in framework:
-                if split == "test":
-                    main_logger.info("Starting new leaf's generation",
-                                    task=task_name_i,
-                                    leaf=leaf.__name__,
-                                    answer=answer,
-                                    count=count)
-                for i in range(count):
-                    if idx == 50 and split != "test":
-                        break
-                    g = generator_func(leaf, answer, i)
-                    generations_tries = 0
-                    story_completed = False
-                    while generations_tries < max_generator_rebuildings:
-                        try:
-                            json_i, txt_i = proc._run_generation(g, yaml_cfg)
-                            story_completed = True
-                            break
-                        except Exception as e:
-                            generations_tries += 1
-                            main_logger.debug(
-                                e,
-                                task=task_name_i,
-                                leaf=leaf,
-                                answer=answer,
-                                idx=idx,
-                                i=i
-                            )
+    try:
+        # Parallel or sequential processing
+        if args.num_workers > 1:
+            main_logger.info("Starting parallel processing",
+                             num_workers=args.num_workers)
 
-                            if generations_tries == max_generator_rebuildings:
-                                json_i, txt_i = None, None
-                                main_logger.error(
-                                    "Max tries reached even for differents seeded generator. Skipping sample",
-                                    task=task_name_i,
-                                    leaf=leaf,
-                                    answer=answer,
-                                    idx=idx,
-                                    i=i
-                                )
-                                break
+            # Use Manager for shared results and errors
+            manager = Manager()
+            results = manager.list()
+            errors = manager.list()
 
-                    if story_completed is False:
-                        element_to_retry = (split, leaf, answer, idx, i)
-                        list_to_retry.append(element_to_retry)
-                    else:
-                        json_i['idx'] = idx
-                        jsonl_dataset.append(json_i)
-                        txt_dataset += txt_i
-                    idx += 1
-                    
-                    if split == "test" and idx % (yaml_cfg["num_samples_by_task"] // 10) == 0:
-                        percentage = (idx / yaml_cfg["num_samples_by_task"]) * 100
-                        # percentage to str with 0 decimals
-                        percentage = "{:.0f}%".format(percentage)
-                        main_logger.info("Progress", task=task_name_i, percentage=percentage)
+            processes = []
+            task_items = list(task_path_dict.items())
 
+            for idx, (task_name_i, task_path_i) in enumerate(task_items):
+                # Wait if we've reached max workers
+                while len(processes) >= args.num_workers:
+                    for p in processes[:]:
+                        if not p.is_alive():
+                            p.join()
+                            processes.remove(p)
+                    time.sleep(0.1)
 
-            try:
-                jsonl_file_path_i = proc.save_as_jsonl(
-                    jsonl_dataset,
-                    folder_path,
-                    None,
-                    filename=f"{split}.jsonl")
-                jsonl_path_dict[task_name_i] = jsonl_file_path_i
-                proc.save_as_txt(txt_dataset,
-                                 folder_path,
-                                 None,
-                                 filename=f"{split}.txt")
-            except Exception as e:
-                raise Exception("Error saving dataset") from e
-            if split == "test":
-                main_logger.info("SUCCESS Generation", task=task_name_i)
+                # Start new process with a wrapper function to append results
+                def worker_wrapper(tn, tp, cfg, lq, so, opt_gen, res, errs):
+                    try:
+                        result = proc.process_single_task(
+                            tn, tp, cfg, lq, so, opt_gen)
+                        res.append(result)
+                    except Exception as e:
+                        errs.append((tn, str(e)))
 
-    main_logger.info("STARTING DATASET CREATION")
-    ds.create_babisteps_dataset(dataset_path, jsonl_path_dict, main_logger,
-                                splits)
-    main_logger.info("SUCCESS DATASET CREATION")
+                p = Process(target=worker_wrapper,
+                            args=(task_name_i, task_path_i, yaml_cfg,
+                                  log_queue, idx, args.optimistic_generation,
+                                  results, errors))
+                p.start()
+                processes.append(p)
 
-    # LM-EVAL-HARNESS TEMPLATE CREATION
-    if args.include_lm_eval_template:
-        main_logger.info("STARTING LM-EVAL-HARNESS TEMPLATE CREATION")
-        src_path = Path(__file__).parent / "babisteps" / "lm_eval"
-        lm_eval_path = Path(os.path.join(output_path, "lm_eval"))
-        if not os.path.exists(lm_eval_path):
-            os.mkdir(lm_eval_path)
-        if not os.path.exists(src_path):
-            raise ValueError(f"Path {src_path} does not exist")
-        # copy all the content of src_path to lm_eval_path usingh shutil
-        import shutil
-        shutil.copytree(src_path, lm_eval_path, dirs_exist_ok=True)
-        # get the path of files named '_default_template_yaml'
-        # in the lm_eval_path
-        df_yamls = [
-            file
-            for file in Path(lm_eval_path).rglob("*_default_template_yaml")
-        ]
-        for file in df_yamls:
-            # replace the path in the file with the new path
-            if not replace_path_in_file(file, str(dataset_path), main_logger):
-                main_logger.warning("File not found", file=file)
+            # Wait for all processes to complete and check for failures
+            failed_processes = []
+            for p in processes:
+                p.join()
+                if p.exitcode != 0:
+                    failed_processes.append(p)
 
-    end_time = time.time()
-    main_logger.info("Execution time", time=end_time - start_time)
+            # If any process failed, raise an error
+            if failed_processes or len(errors) > 0:
+                main_logger.error("One or more worker processes failed",
+                                  num_failed=len(failed_processes),
+                                  num_errors=len(errors))
+                if errors:
+                    for task_name, error_msg in errors:
+                        main_logger.error("Task failed",
+                                          task=task_name,
+                                          error=error_msg)
+                # Give logger time to flush error messages before raising
+                time.sleep(0.5)
+                raise RuntimeError(
+                    f"{len(failed_processes)} worker process(es) failed with non-zero exit code. "
+                    f"{len(errors)} worker(s) reported errors. Check logs for details."
+                )
+
+            jsonl_path_dict = dict(results)
+
+        else:
+            # Sequential processing (original behavior)
+            main_logger.info("Running in sequential mode (num_workers=1)")
+            jsonl_path_dict = {}
+            for idx, (task_name_i,
+                      task_path_i) in enumerate(task_path_dict.items()):
+                result = proc.process_single_task(task_name_i, task_path_i,
+                                                  yaml_cfg, log_queue, idx,
+                                                  args.optimistic_generation)
+                jsonl_path_dict[result[0]] = result[1]
+
+        main_logger.info("STARTING DATASET CREATION")
+        ds.create_babisteps_dataset(dataset_path, jsonl_path_dict, main_logger,
+                                    proc.SPLITS)
+        main_logger.info("SUCCESS DATASET CREATION")
+
+        # SAVE STATUS CSV
+        main_logger.info("SAVING STATUS CSV")
+        ut.save_status_csv(output_path, jsonl_path_dict,
+                           yaml_cfg["num_samples_by_task"], main_logger)
+
+        # LM-EVAL-HARNESS TEMPLATE CREATION
+        if args.include_lm_eval_template:
+            main_logger.info("STARTING LM-EVAL-HARNESS TEMPLATE CREATION")
+            src_path = Path(__file__).parent / "babisteps" / "lm_eval"
+            lm_eval_path = Path(os.path.join(output_path, "lm_eval"))
+            if not os.path.exists(lm_eval_path):
+                os.mkdir(lm_eval_path)
+            if not os.path.exists(src_path):
+                raise ValueError(f"Path {src_path} does not exist")
+
+            shutil.copytree(src_path, lm_eval_path, dirs_exist_ok=True)
+
+            df_yamls = [
+                file
+                for file in Path(lm_eval_path).rglob("*_default_template_yaml")
+            ]
+            for file in df_yamls:
+                if not ut.replace_path_in_file(file, str(dataset_path),
+                                               main_logger):
+                    main_logger.warning("File not found", file=file)
+
+        end_time = time.time()
+        main_logger.info("Execution time", time=end_time - start_time)
+
+    finally:
+        # Always cleanup logger process, even if there's an error
+        # Give logger process time to flush all messages
+        time.sleep(0.5)
+
+        # Stop logger process
+        log_queue.put(None)
+        log_process.join(timeout=5)  # Wait max 5 seconds for clean shutdown
+
+        # If still alive, terminate forcefully
+        if log_process.is_alive():
+            log_process.terminate()
+            log_process.join()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)

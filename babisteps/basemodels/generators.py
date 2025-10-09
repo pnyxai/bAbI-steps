@@ -55,6 +55,29 @@ class BaseGenerator(BaseModel, ABC):
             )
         return self
 
+    def close_logger(self):
+        """Safely closes all file handlers associated with the logger."""
+        if self.logger:
+            # Get the logger name that was used to create this logger
+            logger_name = (self.__class__.__name__ if self.name is None else
+                           self.__class__.__name__ + "-" + self.name)
+
+            # Get the underlying standard library logger directly
+            stdlib_logger = logging.getLogger(logger_name)
+
+            # Close and remove all file handlers
+            if hasattr(stdlib_logger, 'handlers'):
+                for handler in stdlib_logger.handlers[:]:  # Iterate over a copy
+                    if isinstance(handler, logging.FileHandler):
+                        handler.close()
+                        stdlib_logger.removeHandler(handler)
+
+            # Remove from the logger cache so it can be recreated if needed
+            if logger_name in logger.loggers:
+                del logger.loggers[logger_name]
+
+            self.logger = None
+
     def recreate(self):
         """Recreates the instance with the original input values."""
         self.logger.debug(

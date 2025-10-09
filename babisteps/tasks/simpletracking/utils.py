@@ -63,11 +63,11 @@ def _get_generators(**kwargs):
         ]:
             shape_str = ("locations", "actors")
             entities_g = np.random.choice(total_actors,
-                                            size=n_entities,
-                                            replace=False).tolist()
+                                          size=n_entities,
+                                          replace=False).tolist()
             coordenates_g = np.random.choice(total_locations,
-                                                size=n_coordenates,
-                                                replace=False).tolist()
+                                             size=n_coordenates,
+                                             replace=False).tolist()
         elif leaf in [
                 ActorWithObjectPolar,
                 ActorWithObjectWhat,
@@ -75,18 +75,18 @@ def _get_generators(**kwargs):
         ]:
             shape_str = ("actors", "objects")
             entities_g = np.random.choice(total_objects,
-                                            size=n_entities,
-                                            replace=False).tolist()
+                                          size=n_entities,
+                                          replace=False).tolist()
             coordenates_g = np.random.choice(total_actors,
-                                                size=n_coordenates,
-                                                replace=False).tolist()
+                                             size=n_coordenates,
+                                             replace=False).tolist()
 
         entities = [Entity(name=entity) for entity in entities_g]
         coordenates = [
             Coordenate(name=coordenate) for coordenate in coordenates_g
         ]
         model = EntitiesInCoordenates(entities=entities,
-                                        coordenates=coordenates)
+                                      coordenates=coordenates)
         runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
         topic = leaf(answer=answer)
         generator = SimpleTracker(

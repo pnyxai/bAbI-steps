@@ -49,14 +49,13 @@ def _get_generators(**kwargs):
     def generator_func(leaf, answer, i):
         gen_kwargs = yaml_cfg["gen_kwargs"]
         locations = np.random.choice(total_locations,
-                                        size=n_locations,
-                                        replace=False).tolist()
-        actors = np.random.choice(total_actors,
-                                    size=n_actors,
-                                    replace=False).tolist()
+                                     size=n_locations,
+                                     replace=False).tolist()
+        actors = np.random.choice(total_actors, size=n_actors,
+                                  replace=False).tolist()
         objects = np.random.choice(total_objects,
-                                    size=n_objects,
-                                    replace=False).tolist()
+                                   size=n_objects,
+                                   replace=False).tolist()
 
         d0 = [Coordenate(name=coordenate) for coordenate in locations]
         d1 = [Coordenate(name=entity) for entity in actors]

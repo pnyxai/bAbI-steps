@@ -205,11 +205,11 @@ class ComplexTracking(BaseGenerator):
     @model_validator(mode="after")
     def log_p_values(self):
         self.logger.debug("Probability values",
-                         p_antilocation=self.p_antilocation,
-                         p_object_in_actor=self.p_object_in_actor,
-                         p_nowhere_OR=self.p_nowhere_OR,
-                         method_p_nowhere_OR=self.method_p_nowhere_OR,
-                         p_move_object_tx=self.p_move_object_tx)
+                          p_antilocation=self.p_antilocation,
+                          p_object_in_actor=self.p_object_in_actor,
+                          p_nowhere_OR=self.p_nowhere_OR,
+                          method_p_nowhere_OR=self.method_p_nowhere_OR,
+                          p_move_object_tx=self.p_move_object_tx)
         return self
 
     def load_ontology_from_topic(self) -> tuple[Callable, Callable]:
@@ -611,9 +611,9 @@ class ComplexTracking(BaseGenerator):
             t += 1
 
         s.logger.debug("State initialized",
-                      state=s,
-                      answer=self.topic.answer,
-                      i=i)
+                       state=s,
+                       answer=self.topic.answer,
+                       i=i)
         return s
 
     def initialize_state_with_antilocations(self, i: int,
@@ -643,9 +643,9 @@ class ComplexTracking(BaseGenerator):
         s.actor_locations_map = s.get_actor_locations()
         s.objects_map = s.get_objects_map()
         s.logger.debug("State initialized",
-                      state=s,
-                      answer=self.topic.answer,
-                      i=i)
+                       state=s,
+                       answer=self.topic.answer,
+                       i=i)
         return s
 
     def create_random_state(self, i: int) -> State:
