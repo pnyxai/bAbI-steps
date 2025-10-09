@@ -140,24 +140,78 @@ def main():
         main_logger.info(" | ".join(seed_message))
 
     jsonl_path_dict = {}
+    max_generator_rebuildings = yaml_cfg.get("max_generator_rebuildings")
     for task_name_i, task_path_i in task_path_dict.items():
         main_logger.info("Running task %s", task_name_i)
-        splits = ["train", "validation", "test"]
+        splits = ["test", "train", "validation"]
         func_i = ut.load_function_from_config(task_path_i)
         for split in splits:
             jsonl_dataset = []
             txt_dataset = ""
-            generators, folder_path = func_i(**yaml_cfg)
-            main_logger.info("Generatring task:",
-                             task=task_name_i,
-                             split=split)
-            for idx, g in enumerate(generators):
-                if idx == 50 and split != "test":
-                    break
-                json_i, txt_i = proc._run_generation(g, yaml_cfg)
-                json_i['idx'] = idx
-                jsonl_dataset.append(json_i)
-                txt_dataset += txt_i
+            framework, generator_func, folder_path = func_i(**yaml_cfg)
+            if split == "test":
+                main_logger.info("STARTING NEW TASK:",
+                                task=task_name_i,
+                                split=split)
+            idx = 0
+            list_to_retry = []
+            for leaf, answer, count in framework:
+                if split == "test":
+                    main_logger.info("Starting new leaf's generation",
+                                    task=task_name_i,
+                                    leaf=leaf.__name__,
+                                    answer=answer,
+                                    count=count)
+                for i in range(count):
+                    if idx == 50 and split != "test":
+                        break
+                    g = generator_func(leaf, answer, i)
+                    generations_tries = 0
+                    story_completed = False
+                    while generations_tries < max_generator_rebuildings:
+                        try:
+                            json_i, txt_i = proc._run_generation(g, yaml_cfg)
+                            story_completed = True
+                            break
+                        except Exception as e:
+                            generations_tries += 1
+                            main_logger.debug(
+                                e,
+                                task=task_name_i,
+                                leaf=leaf,
+                                answer=answer,
+                                idx=idx,
+                                i=i
+                            )
+
+                            if generations_tries == max_generator_rebuildings:
+                                json_i, txt_i = None, None
+                                main_logger.error(
+                                    "Max tries reached even for differents seeded generator. Skipping sample",
+                                    task=task_name_i,
+                                    leaf=leaf,
+                                    answer=answer,
+                                    idx=idx,
+                                    i=i
+                                )
+                                break
+
+                    if story_completed is False:
+                        element_to_retry = (split, leaf, answer, idx, i)
+                        list_to_retry.append(element_to_retry)
+                    else:
+                        json_i['idx'] = idx
+                        jsonl_dataset.append(json_i)
+                        txt_dataset += txt_i
+                    idx += 1
+                    
+                    if split == "test" and idx % (yaml_cfg["num_samples_by_task"] // 10) == 0:
+                        percentage = (idx / yaml_cfg["num_samples_by_task"]) * 100
+                        # percentage to str with 0 decimals
+                        percentage = "{:.0f}%".format(percentage)
+                        main_logger.info("Progress", task=task_name_i, percentage=percentage)
+
+
             try:
                 jsonl_file_path_i = proc.save_as_jsonl(
                     jsonl_dataset,
@@ -171,7 +225,8 @@ def main():
                                  filename=f"{split}.txt")
             except Exception as e:
                 raise Exception("Error saving dataset") from e
-            main_logger.info("SUCCESS Generation", task=task_name_i)
+            if split == "test":
+                main_logger.info("SUCCESS Generation", task=task_name_i)
 
     main_logger.info("STARTING DATASET CREATION")
     ds.create_babisteps_dataset(dataset_path, jsonl_path_dict, main_logger,

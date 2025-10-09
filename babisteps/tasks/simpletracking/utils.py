@@ -52,54 +52,53 @@ def _get_generators(**kwargs):
     n_entities = yaml_cfg.get("entities")
     n_coordenates = yaml_cfg.get("coordenates")
 
-    def generator_func():
-        for leaf, answer, count in framework:
-            for i in range(count):
-                gen_kwargs = yaml_cfg["gen_kwargs"]
-                # Check if a case of Actorin Location, or Actor with Object
-                if leaf in [
-                        ActorInLocationPolar,
-                        ActorInLocationWho,
-                        ActorInLocationWhere,
-                ]:
-                    shape_str = ("locations", "actors")
-                    entities_g = np.random.choice(total_actors,
-                                                  size=n_entities,
-                                                  replace=False).tolist()
-                    coordenates_g = np.random.choice(total_locations,
-                                                     size=n_coordenates,
-                                                     replace=False).tolist()
-                elif leaf in [
-                        ActorWithObjectPolar,
-                        ActorWithObjectWhat,
-                        ActorWithObjectWho,
-                ]:
-                    shape_str = ("actors", "objects")
-                    entities_g = np.random.choice(total_objects,
-                                                  size=n_entities,
-                                                  replace=False).tolist()
-                    coordenates_g = np.random.choice(total_actors,
-                                                     size=n_coordenates,
-                                                     replace=False).tolist()
+    def generator_func(leaf, answer, i):
 
-                entities = [Entity(name=entity) for entity in entities_g]
-                coordenates = [
-                    Coordenate(name=coordenate) for coordenate in coordenates_g
-                ]
-                model = EntitiesInCoordenates(entities=entities,
-                                              coordenates=coordenates)
-                runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
-                topic = leaf(answer=answer)
-                generator = SimpleTracker(
-                    model=deepcopy(model)._shuffle(),
-                    states_qty=states_qty,
-                    topic=topic,
-                    verbosity=verbosity,
-                    shape_str=shape_str,
-                    log_file=log_file,
-                    name=runtime_name,
-                    **gen_kwargs if gen_kwargs is not None else {},
-                )
-                yield generator
+        gen_kwargs = yaml_cfg["gen_kwargs"]
+        # Check if a case of Actorin Location, or Actor with Object
+        if leaf in [
+                ActorInLocationPolar,
+                ActorInLocationWho,
+                ActorInLocationWhere,
+        ]:
+            shape_str = ("locations", "actors")
+            entities_g = np.random.choice(total_actors,
+                                            size=n_entities,
+                                            replace=False).tolist()
+            coordenates_g = np.random.choice(total_locations,
+                                                size=n_coordenates,
+                                                replace=False).tolist()
+        elif leaf in [
+                ActorWithObjectPolar,
+                ActorWithObjectWhat,
+                ActorWithObjectWho,
+        ]:
+            shape_str = ("actors", "objects")
+            entities_g = np.random.choice(total_objects,
+                                            size=n_entities,
+                                            replace=False).tolist()
+            coordenates_g = np.random.choice(total_actors,
+                                                size=n_coordenates,
+                                                replace=False).tolist()
 
-    return generator_func(), folder_path
+        entities = [Entity(name=entity) for entity in entities_g]
+        coordenates = [
+            Coordenate(name=coordenate) for coordenate in coordenates_g
+        ]
+        model = EntitiesInCoordenates(entities=entities,
+                                        coordenates=coordenates)
+        runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
+        topic = leaf(answer=answer)
+        generator = SimpleTracker(
+            model=deepcopy(model)._shuffle(),
+            states_qty=states_qty,
+            topic=topic,
+            verbosity=verbosity,
+            shape_str=shape_str,
+            log_file=log_file,
+            name=runtime_name,
+            **gen_kwargs if gen_kwargs is not None else {},
+        )
+        return generator
+
+    return framework, generator_func, folder_path

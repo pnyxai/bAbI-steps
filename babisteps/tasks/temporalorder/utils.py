@@ -50,49 +50,48 @@ def _get_generators(**kwargs):
     n_entities = yaml_cfg.get("entities")
     r_name_by_r_type = _get_relations_by_type(total_relations)
 
-    def generator_func():
-        for leaf, answer, count in framework:
-            for i in range(count):
-                gen_kwargs = yaml_cfg["gen_kwargs"]
-                # Temporal Order
-                r_type_g = "relative_event"
-                # Get relations compatible with the selected type
-                relations = _get_list_relations(
-                    r_type_g,
-                    r_name_by_r_type,
-                    relations_qty,
-                    total_relations,
-                    relation_types_compatibility,
-                )
-                # Get entities compatible with the selected relation type
-                entity_type = random.choice(
-                    relations_type_to_entities_dict[r_type_g])
-                local_entities = kwargs.get(entity_type)
-                entities = np.random.choice(local_entities,
-                                            size=n_entities,
-                                            replace=False).tolist()
-                entities = [Entity(name=entity) for entity in entities]
+    def generator_func(leaf, answer, i):
 
-                # Create the model
-                model = OrderModel(entities=entities,
-                                            relations=relations)
-                runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
-                # Complete the topic
-                topic = leaf(
-                    answer=answer,
-                    relation_type=relations[0].relation_type,
-                    shape_str=(entity_type, ),
-                )
-                # Create the generator
-                generator = GeneralOrder(
-                    model=deepcopy(model)._shuffle(),
-                    edge_qty=edge_qty,
-                    topic=topic,
-                    verbosity=verbosity,
-                    log_file=log_file,
-                    name=runtime_name,
-                    **gen_kwargs if gen_kwargs is not None else {},
-                )
-                yield generator
+        gen_kwargs = yaml_cfg["gen_kwargs"]
+        # Temporal Order
+        r_type_g = "relative_event"
+        # Get relations compatible with the selected type
+        relations = _get_list_relations(
+            r_type_g,
+            r_name_by_r_type,
+            relations_qty,
+            total_relations,
+            relation_types_compatibility,
+        )
+        # Get entities compatible with the selected relation type
+        entity_type = random.choice(
+            relations_type_to_entities_dict[r_type_g])
+        local_entities = kwargs.get(entity_type)
+        entities = np.random.choice(local_entities,
+                                    size=n_entities,
+                                    replace=False).tolist()
+        entities = [Entity(name=entity) for entity in entities]
 
-    return generator_func(), folder_path
+        # Create the model
+        model = OrderModel(entities=entities,
+                                    relations=relations)
+        runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
+        # Complete the topic
+        topic = leaf(
+            answer=answer,
+            relation_type=relations[0].relation_type,
+            shape_str=(entity_type, ),
+        )
+        # Create the generator
+        generator = GeneralOrder(
+            model=deepcopy(model)._shuffle(),
+            edge_qty=edge_qty,
+            topic=topic,
+            verbosity=verbosity,
+            log_file=log_file,
+            name=runtime_name,
+            **gen_kwargs if gen_kwargs is not None else {},
+        )
+        return generator
+
+    return framework, generator_func, folder_path

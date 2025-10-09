@@ -280,7 +280,7 @@ def _run_generation(g, yaml_cfg):
             g = g.recreate()
             retries += 1
     if retries >= yaml_cfg["max_retries"]:
-        raise Exception("Max retries reached. Skipping story")
+        raise Exception("Max retries reached from the same seeded generator. Skipping story")
 
     json = g.get_json()
     txt = g.get_txt()

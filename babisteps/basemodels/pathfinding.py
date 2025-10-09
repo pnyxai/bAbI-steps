@@ -202,8 +202,6 @@ class PathFinding(OrderBaseGenerator):
             attempts += 1
 
         if attempts == max_attempts:
-            self.logger.error(
-                "Max attempts reached while extending the graph.")
             raise RuntimeError(
                 "Failed to extend graph while preserving unique path.")
         return connections_am, connections_g
@@ -247,7 +245,7 @@ class PathFinding(OrderBaseGenerator):
             c_am, c = self._extend_preserving_unique_path(
                 c_am, c, self.edge_qty + number_of_subtractions)
         except Exception as e:
-            self.logger.error("Error while extending graph: %s", e)
+            self.logger.debug("%s", e)
             raise e
 
         # When corresponds, disconnect the previously selected edges

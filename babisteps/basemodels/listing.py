@@ -171,7 +171,7 @@ class Listing(SimpleTrackerBaseGenerator):
             self.topic.entities = e
         self.model.coordenates.append(self.uncertainty)
         self._create_aux()
-        self.logger.info(
+        self.logger.debug(
             "Creating _actor_in_location_who",
             answer=self.topic.answer,
             e=([e.name for e in self.topic.entities]
@@ -254,7 +254,7 @@ class Listing(SimpleTrackerBaseGenerator):
                 states[j] = self.create_new_state(j, states[j + 1], condition)
         else:
             raise ValueError("Invalid answer value")
-        self.logger.info(
+        self.logger.debug(
             "actor_in_location_who successfully created:",
             answer=self.topic.answer,
             e=([e.name for e in self.topic.entities]
@@ -271,7 +271,7 @@ class Listing(SimpleTrackerBaseGenerator):
             self.topic.entities = e
         self.model.coordenates.append(self.uncertainty)
         self._create_aux()
-        self.logger.info(
+        self.logger.debug(
             "Creating _actor_with_object_what",
             answer=self.topic.answer,
             e=([e.name for e in self.topic.entities]
@@ -296,7 +296,7 @@ class Listing(SimpleTrackerBaseGenerator):
             condition = lambda x: True
             states[j] = self.create_new_state(j, states[j + 1], condition)
 
-        self.logger.info(
+        self.logger.debug(
             "_actor_with_object_what successfully created:",
             answer=self.topic.answer,
             e=([e.name for e in self.topic.entities]
