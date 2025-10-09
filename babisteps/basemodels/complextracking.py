@@ -204,12 +204,12 @@ class ComplexTracking(BaseGenerator):
     # function to log p values after instance creation
     @model_validator(mode="after")
     def log_p_values(self):
-        self.logger.info("Probability values",
-                         p_antilocation=self.p_antilocation,
-                         p_object_in_actor=self.p_object_in_actor,
-                         p_nowhere_OR=self.p_nowhere_OR,
-                         method_p_nowhere_OR=self.method_p_nowhere_OR,
-                         p_move_object_tx=self.p_move_object_tx)
+        self.logger.debug("Probability values",
+                          p_antilocation=self.p_antilocation,
+                          p_object_in_actor=self.p_object_in_actor,
+                          p_nowhere_OR=self.p_nowhere_OR,
+                          method_p_nowhere_OR=self.method_p_nowhere_OR,
+                          p_move_object_tx=self.p_move_object_tx)
         return self
 
     def load_ontology_from_topic(self) -> tuple[Callable, Callable]:
@@ -582,7 +582,7 @@ class ComplexTracking(BaseGenerator):
             )
             diff = current_state.to_coo() - reference_state.to_coo()
             transition_info = process_delta(diff)
-            self.logger.info("Transition", i=i, transition=transition_info)
+            self.logger.debug("Transition", i=i, transition=transition_info)
             deltas.append(transition_info)
         self.deltas = deltas
         return
@@ -599,7 +599,7 @@ class ComplexTracking(BaseGenerator):
             State: A initialized state that meets the given condition.
         """
 
-        self.logger.info(
+        self.logger.debug(
             "initialize_state:",
             i=i,
             answer=self.topic.answer,
@@ -610,10 +610,10 @@ class ComplexTracking(BaseGenerator):
             s = self.create_random_state(i)
             t += 1
 
-        s.logger.info("State initialized",
-                      state=s,
-                      answer=self.topic.answer,
-                      i=i)
+        s.logger.debug("State initialized",
+                       state=s,
+                       answer=self.topic.answer,
+                       i=i)
         return s
 
     def initialize_state_with_antilocations(self, i: int,
@@ -629,7 +629,7 @@ class ComplexTracking(BaseGenerator):
             State: A initialized state that meets the given condition.
         """
 
-        self.logger.info(
+        self.logger.debug(
             "initialize_state:",
             i=i,
             answer=self.topic.answer,
@@ -642,10 +642,10 @@ class ComplexTracking(BaseGenerator):
 
         s.actor_locations_map = s.get_actor_locations()
         s.objects_map = s.get_objects_map()
-        s.logger.info("State initialized",
-                      state=s,
-                      answer=self.topic.answer,
-                      i=i)
+        s.logger.debug("State initialized",
+                       state=s,
+                       answer=self.topic.answer,
+                       i=i)
         return s
 
     def create_random_state(self, i: int) -> State:
@@ -874,7 +874,7 @@ class ComplexTracking(BaseGenerator):
             new_am = state.create_transition(self.num_transitions, condition,
                                              axis, filter)
             if new_am is None:
-                self.logger.error(
+                self.logger.debug(
                     "Fail both: make_actor_transition & make_object_transition"
                 )
                 raise ValueError(
@@ -909,7 +909,7 @@ class ComplexTracking(BaseGenerator):
         self.model.dim1.append(self.uncertainty[1])
         self.model.dim2.append(self.uncertainty[2])
         self._create_aux()
-        self.logger.info(
+        self.logger.debug(
             "Creating _object_in_location_polar",
             topic=type(self.topic).__name__,
             answer=self.topic.answer,
@@ -1037,7 +1037,7 @@ class ComplexTracking(BaseGenerator):
         self.location_matrix = operators.generate_location_matrix(
             self.shape[0] // 2)
         self.location_to_locations_map = self.create_transition_map()
-        self.logger.info(
+        self.logger.debug(
             "Creating _object_in_location_what",
             topic=type(self.topic).__name__,
             answer=self.topic.answer,
@@ -1141,7 +1141,7 @@ class ComplexTracking(BaseGenerator):
         )
 
         if isinstance(e, Exception):
-            self.logger.error("FORWARD PASS",
+            self.logger.debug("FORWARD PASS",
                               error=e,
                               groups=groups,
                               actor_locations_map=actor_locations_map,
@@ -1151,9 +1151,9 @@ class ComplexTracking(BaseGenerator):
         else:
             am = self.create_state_with_maps(actor_locations_map, objects_map)
             if condition(am):
-                self.logger.info("Forward pass OK")
+                self.logger.debug("Forward pass OK")
             else:
-                self.logger.error("Forward pass failed")
+                self.logger.debug("Forward pass failed")
                 raise ValueError("Forward pass failed")
 
         return states
@@ -1177,7 +1177,7 @@ class ComplexTracking(BaseGenerator):
         self.location_matrix = operators.generate_location_matrix(
             self.shape[0] // 2)
         self.location_to_locations_map = self.create_transition_map()
-        self.logger.info(
+        self.logger.debug(
             "Creating _object_in_location_where",
             topic=type(self.topic).__name__,
             answer=self.topic.answer,

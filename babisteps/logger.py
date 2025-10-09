@@ -1,6 +1,7 @@
 import logging
 import sys
 from collections import OrderedDict
+from queue import Empty
 
 import structlog
 
@@ -19,9 +20,8 @@ def configure_structlog():
         """
         key_order = ["logger", "level", "event"]
         # Create an ordered dictionary with specified key order
-        reordered = OrderedDict(
-            (key, event_dict.pop(key)) for key in key_order if key in event_dict
-        )
+        reordered = OrderedDict((key, event_dict.pop(key)) for key in key_order
+                                if key in event_dict)
         # Append the remaining keys
         reordered.update(event_dict)
         return reordered
@@ -56,6 +56,9 @@ def get_logger(name, level=logging.INFO, log_file="logs.txt"):
     :param name: The name of the logger.
     :return: The configured logger instance.
     """
+    if name in loggers:
+        return loggers[name]
+
     logger = logging.getLogger(name)
     # set level
     logger.setLevel(level)
@@ -83,3 +86,64 @@ def override_level(level):
         logger = loggers[logger_name]
         logger.setLevel(level)
         loggers[logger_name] = structlog.wrap_logger(logger)
+
+
+def logger_process(log_queue, log_file, verbosity):
+    """Dedicated process for handling all logging operations."""
+    file_logger = get_logger(
+        "main",
+        level=getattr(logging, verbosity),
+        log_file=log_file,
+    )
+
+    while True:
+        try:
+            record = log_queue.get(timeout=1)
+            if record is None:  # Sentinel value to stop
+                break
+
+            # Log the record
+            level, message, extras = record
+            log_method = getattr(file_logger, level)
+            if extras:
+                log_method(message, **extras)
+            else:
+                log_method(message)
+        except Empty:
+            continue
+        except Exception as e:
+            print(f"Logger process error: {e}")
+
+
+class QueueLogger:
+    """Logger wrapper that sends logs to a queue."""
+
+    def __init__(self, log_queue, task_name=None):
+        self.log_queue = log_queue
+        self.task_name = task_name
+
+    def _log(self, level, message, *args, **kwargs):
+        # If positional args are provided, format the message
+        if args:
+            try:
+                message = message % args
+            except (TypeError, ValueError):
+                # If formatting fails, just concatenate
+                message = str(message) + " " + " ".join(
+                    str(arg) for arg in args)
+
+        if self.task_name:
+            kwargs['task'] = self.task_name
+        self.log_queue.put((level, message, kwargs))
+
+    def info(self, message, *args, **kwargs):
+        self._log('info', message, *args, **kwargs)
+
+    def debug(self, message, *args, **kwargs):
+        self._log('debug', message, *args, **kwargs)
+
+    def warning(self, message, *args, **kwargs):
+        self._log('warning', message, *args, **kwargs)
+
+    def error(self, message, *args, **kwargs):
+        self._log('error', message, *args, **kwargs)

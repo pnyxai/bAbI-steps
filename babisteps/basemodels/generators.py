@@ -55,9 +55,32 @@ class BaseGenerator(BaseModel, ABC):
             )
         return self
 
+    def close_logger(self):
+        """Safely closes all file handlers associated with the logger."""
+        if self.logger:
+            # Get the logger name that was used to create this logger
+            logger_name = (self.__class__.__name__ if self.name is None else
+                           self.__class__.__name__ + "-" + self.name)
+
+            # Get the underlying standard library logger directly
+            stdlib_logger = logging.getLogger(logger_name)
+
+            # Close and remove all file handlers
+            if hasattr(stdlib_logger, 'handlers'):
+                for handler in stdlib_logger.handlers[:]:  # Iterate over a copy
+                    if isinstance(handler, logging.FileHandler):
+                        handler.close()
+                        stdlib_logger.removeHandler(handler)
+
+            # Remove from the logger cache so it can be recreated if needed
+            if logger_name in logger.loggers:
+                del logger.loggers[logger_name]
+
+            self.logger = None
+
     def recreate(self):
         """Recreates the instance with the original input values."""
-        self.logger.info(
+        self.logger.debug(
             "Recreating instance with original inputs.",
             original_inputs=self.original_inputs,
         )
@@ -169,7 +192,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
             EntityInCoordenateState: A initialized state that meets the given condition.
         """
 
-        self.logger.info("Creating Answer:", i=i)
+        self.logger.debug("Creating Answer:", i=i)
         s = self.create_random_state(i)
         t = 0
         while not condition(s.am):
@@ -228,7 +251,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
                     o = j + 1
                     e = j
                 delta_j = np.array([diff.coords.T[o], diff.coords.T[e]])
-                self.logger.info("Transition", i=i, transition=delta_j)
+                self.logger.debug("Transition", i=i, transition=delta_j)
                 deltas_i.append(delta_j)
             deltas.append(deltas_i)
         self.deltas = deltas
@@ -322,12 +345,12 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
         self.nl = [f.to_nl() for f in self.fol]
 
     def print_transition(self):
-        self.logger.info("Initial state", state=self.states[0].am.todense())
+        self.logger.debug("Initial state", state=self.states[0].am.todense())
         for i, d in enumerate(self.deltas):
             aux = [[x[0][0], x[0][1], x[1][1]] for x in d]
             for d in aux:
-                self.logger.info("Delta", i=i, e=d[0], prev=d[1], next=d[2])
-        self.logger.info("Final state", state=self.states[0].am.todense())
+                self.logger.debug("Delta", i=i, e=d[0], prev=d[1], next=d[2])
+        self.logger.debug("Final state", state=self.states[0].am.todense())
 
 
 class OrderRequest(BaseModel, ABC):

@@ -258,7 +258,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         self.topic.coordenate = c
         self.model.coordenates.append(self.uncertainty)
         self._create_aux()
-        self.logger.info(
+        self.logger.debug(
             "Creating _actor_in_location_polar",
             answer=self.topic.answer,
             e=e.name,
@@ -325,7 +325,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             raise ValueError(
                 "Invalid answer value, should be 'yes', 'no' or 'unknown'")
 
-        self.logger.info(
+        self.logger.debug(
             "_actor_in_location_polar successfully created",
             answer=self.topic.answer,
             e=e.name,
@@ -341,7 +341,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         self.topic.coordenate = c
         self.model.coordenates.append(self.uncertainty)
         self._create_aux()
-        self.logger.info(
+        self.logger.debug(
             "Creating _actor_in_location_who",
             answer=self.topic.answer,
             e=e.name,
@@ -422,7 +422,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
                 states[j] = self.create_new_state(j, states[j + 1], condition)
         else:
             raise ValueError("Invalid answer value")
-        self.logger.info(
+        self.logger.debug(
             "actor_in_location_who successfully created:",
             answer=self.topic.answer,
             e=e.name,
@@ -437,7 +437,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         self.topic.coordenate = c
         self.model.coordenates.append(self.uncertainty)
         self._create_aux()
-        self.logger.info(
+        self.logger.debug(
             "Creating _actor_in_location_where",
             answer=self.topic.answer,
             e=e.name,
@@ -459,7 +459,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             condition = lambda x: True
             states[j] = self.create_new_state(j, states[j + 1], condition)
 
-        self.logger.info(
+        self.logger.debug(
             "_actor_in_location_where successfully created:",
             answer=self.topic.answer,
             e=e.name,
@@ -476,7 +476,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         self._create_aux()
         states = [None] * self.states_qty
 
-        self.logger.info(
+        self.logger.debug(
             "Creating _actor_with_object_polar",
             answer=self.topic.answer,
             e=e.name,
@@ -497,7 +497,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             condition = lambda x: True
             states[j] = self.create_new_state(j, states[j + 1], condition)
 
-        self.logger.info(
+        self.logger.debug(
             "_actor_with_object_polar successfully created",
             answer=self.topic.answer,
             e=e.name,
@@ -529,7 +529,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             condition = lambda x: True
             states[j] = self.create_new_state(j, states[j + 1], condition)
 
-        self.logger.info(
+        self.logger.debug(
             "_actor_with_object_what successfully created",
             answer=self.topic.answer,
             e=e.name,
@@ -560,7 +560,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             condition = lambda x: True
             states[j] = self.create_new_state(j, states[j + 1], condition)
 
-        self.logger.info(
+        self.logger.debug(
             "_actor_with_object_who successfully created",
             answer=self.topic.answer,
             e=e.name,

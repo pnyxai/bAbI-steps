@@ -613,7 +613,7 @@ class ObjectInLocationState(State):
                     location_to_locations_map)
                 future_obj_txs = new_state.get_possible_objects_transitions()
                 if len(future_act_txs) == 0 and len(future_obj_txs) == 0:
-                    self.logger.warning("No possible transitions, retrying")
+                    self.logger.debug("No possible transitions, retrying")
                     continue
                 self.logger.debug(
                     "actor_locations_map",
@@ -624,7 +624,7 @@ class ObjectInLocationState(State):
             else:
                 t += 1
                 continue
-            self.logger.info(
+            self.logger.debug(
                 "Tx: object",
                 z=int(obj_rnd),
                 loc=current_loc,
@@ -709,7 +709,7 @@ class ObjectInLocationState(State):
             #         "validate_next do not aggregates axis (0,1) into [1,1,..,1]"
             #     )
 
-            self.logger.info(
+            self.logger.debug(
                 "Tx: actor",
                 y=y,
                 x=current_x,
@@ -792,7 +792,7 @@ class ObjectInLocationState(State):
                 f"Axis {axis} is not a valid axis to create a transition")
 
         if new_state is None:
-            self.logger.error(
+            self.logger.debug(
                 "Impossible to make any kind of transition, FATAL!", axis=axis)
             raise ValueError(
                 "Impossible to make any kind of transition, FATAL!")

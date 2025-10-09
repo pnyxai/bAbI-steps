@@ -1,10 +1,33 @@
+import csv
 import importlib.util
+import json
 import os
 from pathlib import Path
 from typing import Literal, get_args, get_origin
 
 import numpy as np
 import yaml
+
+
+def split_or_empty(value):
+    return value.split(",") if value else []
+
+
+def replace_path_in_file(file_path, new_path, logger):
+    """Reads a file, replaces the placeholder, and writes the changes back."""
+    try:
+        with open(file_path) as f:
+            content = f.read()
+        # Conver new path to absolute path
+        abs_new_path = os.path.abspath(new_path)
+        modified_content = content.replace("<PATH/TO/REPLACE>", abs_new_path)
+        with open(file_path, 'w') as f:
+            f.write(modified_content)
+        logger.info("Placeholder replaced", file_path=file_path)
+        return True
+    except FileNotFoundError:
+        logger.error("File not found at path", file_path=file_path)
+        return False
 
 
 # from lm-eval-harnes argument parser
@@ -281,3 +304,57 @@ def create_task_path_dict(task_names: list[str], task_folders: list[Path],
                         raise ValueError(
                             f"config.yaml not found in task folder {folder}")
     return task_path_dict
+
+
+def save_status_csv(output_path, jsonl_path_dict, num_samples_by_task,
+                    main_logger):
+    """Save a status CSV with generation statistics for each task.
+    
+    Args:
+        output_path: Path where the status.csv will be saved
+        jsonl_path_dict: Dictionary mapping task names to their test jsonl file paths
+        num_samples_by_task: Expected number of samples per task
+        main_logger: Logger instance for logging messages
+    """
+    status_file = os.path.join(output_path, "status.csv")
+
+    try:
+        with open(status_file, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            # Write header
+            writer.writerow(['task', 'num_samples_by_task', 'done', 'success'])
+
+            # Process each task
+            for task_name, jsonl_path in jsonl_path_dict.items():
+                # Count lines in the jsonl file
+                done_count = 0
+                if jsonl_path and os.path.exists(jsonl_path):
+                    try:
+                        with open(jsonl_path) as f:
+                            for line in f:
+                                if line.strip():  # Count non-empty lines
+                                    try:
+                                        json.loads(line)
+                                        done_count += 1
+                                    except json.JSONDecodeError:
+                                        # Skip invalid JSON lines
+                                        pass
+                    except Exception as e:
+                        main_logger.warning(
+                            "Error reading jsonl file for task",
+                            task=task_name,
+                            error=str(e))
+
+                # Calculate success: 1 if done equals expected, 0 otherwise
+                success = 1 if done_count == num_samples_by_task else 0
+
+                # Write row
+                writer.writerow(
+                    [task_name, num_samples_by_task, done_count, success])
+
+        main_logger.info("Status CSV saved", file=status_file)
+        return True
+
+    except Exception as e:
+        main_logger.error("Error saving status CSV", error=str(e))
+        return False

@@ -53,52 +53,50 @@ def _get_generators(**kwargs):
         for k, v in r_name_by_r_type.items() if k == "absolute_position"
     }
 
-    def generator_func():
-        for leaf, answer, count in framework:
-            for i in range(count):
-                path_length = np.random.randint(3, max_path_length + 1)
-                if not isinstance(answer, str):
-                    answer = path_length
-                gen_kwargs = yaml_cfg["gen_kwargs"]
-                # PATHFINDING: currently only with absolute_position
-                r_type_g = "absolute_position"
-                # Get relations compatible with the selected type
-                relations = _get_list_relations(
-                    r_type_g,
-                    r_name_by_r_type,
-                    relations_qty,
-                    total_relations,
-                    relation_types_compatibility,
-                )
-                # Get entities compatible with the selected relation type
-                entity_type = "locations"  # NOTE: Hardcoded for PathFinding
-                local_entities = kwargs.get(entity_type)
-                entities = np.random.choice(local_entities,
-                                            size=n_entities,
-                                            replace=False).tolist()
-                entities = [Entity(name=entity) for entity in entities]
+    def generator_func(leaf, answer, i):
 
-                # Create the model
-                model = OrderModel(entities=entities, relations=relations)
-                runtime_name = leaf.__name__ + DELIM + str(
-                    answer) + DELIM + str(i)
-                # Complete the topic
-                topic = leaf(
-                    answer=answer,
-                    relation_type=relations[0].relation_type,
-                    shape_str=(entity_type, ),
-                )
-                # Create the generator
-                generator = PathFinding(
-                    model=deepcopy(model)._shuffle(),
-                    edge_qty=edge_qty,
-                    topic=topic,
-                    verbosity=verbosity,
-                    log_file=log_file,
-                    name=runtime_name,
-                    path_length=path_length,
-                    **gen_kwargs if gen_kwargs is not None else {},
-                )
-                yield generator
+        path_length = np.random.randint(3, max_path_length + 1)
+        if not isinstance(answer, str):
+            answer = path_length
+        gen_kwargs = yaml_cfg["gen_kwargs"]
+        # PATHFINDING: currently only with absolute_position
+        r_type_g = "absolute_position"
+        # Get relations compatible with the selected type
+        relations = _get_list_relations(
+            r_type_g,
+            r_name_by_r_type,
+            relations_qty,
+            total_relations,
+            relation_types_compatibility,
+        )
+        # Get entities compatible with the selected relation type
+        entity_type = "locations"  # NOTE: Hardcoded for PathFinding
+        local_entities = kwargs.get(entity_type)
+        entities = np.random.choice(local_entities,
+                                    size=n_entities,
+                                    replace=False).tolist()
+        entities = [Entity(name=entity) for entity in entities]
 
-    return generator_func(), folder_path
+        # Create the model
+        model = OrderModel(entities=entities, relations=relations)
+        runtime_name = leaf.__name__ + DELIM + str(answer) + DELIM + str(i)
+        # Complete the topic
+        topic = leaf(
+            answer=answer,
+            relation_type=relations[0].relation_type,
+            shape_str=(entity_type, ),
+        )
+        # Create the generator
+        generator = PathFinding(
+            model=deepcopy(model)._shuffle(),
+            edge_qty=edge_qty,
+            topic=topic,
+            verbosity=verbosity,
+            log_file=log_file,
+            name=runtime_name,
+            path_length=path_length,
+            **gen_kwargs if gen_kwargs is not None else {},
+        )
+        return generator
+
+    return framework, generator_func, folder_path

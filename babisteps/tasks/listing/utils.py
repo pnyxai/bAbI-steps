@@ -47,55 +47,52 @@ def _get_generators(**kwargs):
         raise ValueError(f"listing_qty ({listing_qty}) must be less than "
                          f"or equal to # entities = {n_entities}")
 
-    def generator_func():
-        for leaf, answer, count in framework:
-            for i in range(count):
-                if not isinstance(answer, str):
-                    # +1 to include the last element and avoid [)
-                    answer = np.random.randint(2, listing_qty + 1)
-                gen_kwargs = yaml_cfg["gen_kwargs"]
-                # Check if a case of Actorin Location, or Actor with Object
-                if leaf in [
-                        ActorInLocationWho,
-                ]:
-                    shape_str = ("locations", "actors")
-                    entities_g = np.random.choice(total_actors,
-                                                  size=n_entities,
-                                                  replace=False).tolist()
-                    coordenates_g = np.random.choice(total_locations,
-                                                     size=n_coordenates,
-                                                     replace=False).tolist()
-                elif leaf in [
-                        ActorWithObjectWhat,
-                ]:
-                    shape_str = ("actors", "objects")
-                    entities_g = np.random.choice(total_objects,
-                                                  size=n_entities,
-                                                  replace=False).tolist()
-                    coordenates_g = np.random.choice(total_actors,
-                                                     size=n_coordenates,
-                                                     replace=False).tolist()
+    def generator_func(leaf, answer, i):
+        if not isinstance(answer, str):
+            # +1 to include the last element and avoid [)
+            answer = np.random.randint(2, listing_qty + 1)
+        gen_kwargs = yaml_cfg["gen_kwargs"]
+        # Check if a case of Actorin Location, or Actor with Object
+        if leaf in [
+                ActorInLocationWho,
+        ]:
+            shape_str = ("locations", "actors")
+            entities_g = np.random.choice(total_actors,
+                                          size=n_entities,
+                                          replace=False).tolist()
+            coordenates_g = np.random.choice(total_locations,
+                                             size=n_coordenates,
+                                             replace=False).tolist()
+        elif leaf in [
+                ActorWithObjectWhat,
+        ]:
+            shape_str = ("actors", "objects")
+            entities_g = np.random.choice(total_objects,
+                                          size=n_entities,
+                                          replace=False).tolist()
+            coordenates_g = np.random.choice(total_actors,
+                                             size=n_coordenates,
+                                             replace=False).tolist()
 
-                entities = [Entity(name=entity) for entity in entities_g]
-                coordenates = [
-                    Coordenate(name=coordenate) for coordenate in coordenates_g
-                ]
-                model = EntitiesInCoordenates(entities=entities,
-                                              coordenates=coordenates)
-                runtime_name = leaf.__name__ + DELIM + str(
-                    answer) + DELIM + str(i)
-                topic = leaf(answer=answer)
+        entities = [Entity(name=entity) for entity in entities_g]
+        coordenates = [
+            Coordenate(name=coordenate) for coordenate in coordenates_g
+        ]
+        model = EntitiesInCoordenates(entities=entities,
+                                      coordenates=coordenates)
+        runtime_name = leaf.__name__ + DELIM + str(answer) + DELIM + str(i)
+        topic = leaf(answer=answer)
 
-                generator = Listing(
-                    model=deepcopy(model)._shuffle(),
-                    states_qty=states_qty,
-                    topic=topic,
-                    verbosity=verbosity,
-                    shape_str=shape_str,
-                    log_file=log_file,
-                    name=runtime_name,
-                    **gen_kwargs if gen_kwargs is not None else {},
-                )
-                yield generator
+        generator = Listing(
+            model=deepcopy(model)._shuffle(),
+            states_qty=states_qty,
+            topic=topic,
+            verbosity=verbosity,
+            shape_str=shape_str,
+            log_file=log_file,
+            name=runtime_name,
+            **gen_kwargs if gen_kwargs is not None else {},
+        )
+        return generator
 
-    return generator_func(), folder_path
+    return framework, generator_func, folder_path
