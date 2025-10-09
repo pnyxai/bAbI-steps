@@ -14,6 +14,13 @@ from babisteps import logger
 from babisteps import proccesing as proc
 from babisteps import utils as ut
 
+def worker_wrapper(tn, tp, cfg, lq, so, opt_gen, res, errs):
+    try:
+        result = proc.process_single_task(
+            tn, tp, cfg, lq, so, opt_gen)
+        res.append(result)
+    except Exception as e:
+        errs.append((tn, str(e)))
 
 def main():
     parser = argparse.ArgumentParser(
@@ -165,13 +172,7 @@ def main():
                     time.sleep(0.1)
 
                 # Start new process with a wrapper function to append results
-                def worker_wrapper(tn, tp, cfg, lq, so, opt_gen, res, errs):
-                    try:
-                        result = proc.process_single_task(
-                            tn, tp, cfg, lq, so, opt_gen)
-                        res.append(result)
-                    except Exception as e:
-                        errs.append((tn, str(e)))
+                
 
                 p = Process(target=worker_wrapper,
                             args=(task_name_i, task_path_i, yaml_cfg,
