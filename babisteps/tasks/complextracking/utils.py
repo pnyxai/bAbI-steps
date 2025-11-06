@@ -12,7 +12,7 @@ from babisteps.basemodels.complextracking import (ComplexTracking,
                                                   ObjectInLocationWhere,
                                                   ObjectsInLocation)
 from babisteps.basemodels.generators import DELIM
-from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.basemodels.nodes import Coordinate, Entity
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
 
@@ -57,8 +57,8 @@ def _get_generators(**kwargs):
                                    size=n_objects,
                                    replace=False).tolist()
 
-        d0 = [Coordenate(name=coordenate) for coordenate in locations]
-        d1 = [Coordenate(name=entity) for entity in actors]
+        d0 = [Coordinate(name=coordinate) for coordinate in locations]
+        d1 = [Coordinate(name=entity) for entity in actors]
         d2 = [Entity(name=entity) for entity in objects]
         model = ObjectsInLocation(dim0=d0, dim1=d1, dim2=d2)
         runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)

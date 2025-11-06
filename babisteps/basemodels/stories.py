@@ -18,11 +18,13 @@ class Story(BaseModel):
         dict_json["question"] = self.question
         dict_json["answer"] = self.answer
         wd = ""
+        # Each FOL in world_enumerate and story to nl
         for wd_i in self.world_enumerate:
             wd = wd + wd_i.to_nl() + " "
         s = ""
         for s_i in self.story:
             s = s + s_i.to_nl() + "\n"
+
         dict_json["world_enumerate"] = wd
         dict_json["story"] = s
         return dict_json

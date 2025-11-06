@@ -11,7 +11,7 @@ from babisteps.basemodels.FOL import FOL, Exists, From, FromTo, In, Out, To
 from babisteps.basemodels.generators import (
     DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS, REPLACE_PLACEHOLDER,
     UNKNONW_ANSWERS, BaseGenerator)
-from babisteps.basemodels.nodes import (Coordenate, Entity,
+from babisteps.basemodels.nodes import (Coordinate, Entity,
                                         ObjectInLocationState,
                                         ObjectInLocationStatePolar, State)
 from babisteps.basemodels.stories import Story
@@ -29,7 +29,7 @@ class ComplexTrackingRequest(BaseModel):
     def get_answer(self) -> list[str]:
         pass
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         pass
 
 
@@ -50,7 +50,7 @@ class ObjectInLocationPolar(ComplexTrackingRequest):
         else:
             raise ValueError("answer should be 'yes', 'no' or 'unknown'")
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
             f"{REPLACE_PLACEHOLDER} if {self.d2.name} is in the {self.d0.name}",
@@ -81,7 +81,7 @@ class ObjectInLocationWhat(ComplexTrackingRequest):
             raise ValueError(
                 "answer should be 'designated_object', 'none' or 'unknown'")
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
             f"{REPLACE_PLACEHOLDER} what is in the {self.d0.name}",
@@ -110,7 +110,7 @@ class ObjectInLocationWhere(ComplexTrackingRequest):
             raise ValueError(
                 "answer should be 'designated_location' or 'unknown'")
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
             f"{REPLACE_PLACEHOLDER} where the {self.d2.name} is",
@@ -120,8 +120,8 @@ class ObjectInLocationWhere(ComplexTrackingRequest):
 
 
 class ObjectsInLocation(BaseModel):
-    dim0: list[Coordenate]
-    dim1: list[Coordenate]
+    dim0: list[Coordinate]
+    dim1: list[Coordinate]
     dim2: list[Entity]
 
     @model_validator(mode="after")
@@ -229,18 +229,18 @@ class ComplexTracking(BaseGenerator):
 
         uncertainty_mapping: dict[type[ComplexTrackingRequest], tuple] = {
             ObjectInLocationPolar: (
-                Coordenate(name="nowhere"),
-                Coordenate(name="nobody"),
+                Coordinate(name="nowhere"),
+                Coordinate(name="nobody"),
                 Entity(name="nothing"),
             ),
             ObjectInLocationWhat: (
                 None,
-                Coordenate(name="nobody"),
+                Coordinate(name="nobody"),
                 Entity(name="nothing"),
             ),
             ObjectInLocationWhere: (
                 None,
-                Coordenate(name="nobody"),
+                Coordinate(name="nobody"),
                 Entity(name="nothing"),
             ),
         }
@@ -1028,7 +1028,7 @@ class ComplexTracking(BaseGenerator):
         # for dim0, due to anti locations, i need to add each element again
         # to the list, BUT, adding the 'anti-' prefix in each element name
         anti_locations = [
-            Coordenate(name=f"anti-{d.name}") for d in self.model.dim0
+            Coordinate(name=f"anti-{d.name}") for d in self.model.dim0
         ]
         self.model.dim0.extend(anti_locations)
         self.model.dim1.append(self.uncertainty[1])
@@ -1168,7 +1168,7 @@ class ComplexTracking(BaseGenerator):
         # for dim0, due to anti locations, i need to add each element again
         # to the list, BUT, adding the 'anti-' prefix in each element name
         anti_locations = [
-            Coordenate(name=f"anti-{d.name}") for d in self.model.dim0
+            Coordinate(name=f"anti-{d.name}") for d in self.model.dim0
         ]
         self.model.dim0.extend(anti_locations)
         self.model.dim1.append(self.uncertainty[1])
@@ -1251,7 +1251,7 @@ class ComplexTracking(BaseGenerator):
                     state_sentences.append(
                         In(
                             entity=self.dim1_idx_to_obj[a],
-                            coordenate=self.dim0_idx_to_obj[loc],
+                            coordinate=self.dim0_idx_to_obj[loc],
                             shape_str=(self.shape_str[0], self.shape_str[1]),
                         ))
                 # 2) Actor with objects in a place
@@ -1265,14 +1265,14 @@ class ComplexTracking(BaseGenerator):
                             state_sentences.append(
                                 In(
                                     entity=self.dim1_idx_to_obj[a],
-                                    coordenate=self.dim0_idx_to_obj[loc],
+                                    coordinate=self.dim0_idx_to_obj[loc],
                                     shape_str=(self.shape_str[0],
                                                self.shape_str[1]),
                                 ))
                     state_sentences.append(
                         In(
                             entity=self.dim2_idx_to_obj[o],
-                            coordenate=self.dim1_idx_to_obj[a],
+                            coordinate=self.dim1_idx_to_obj[a],
                             shape_str=(self.shape_str[1], self.shape_str[2]),
                         ))
 
@@ -1282,7 +1282,7 @@ class ComplexTracking(BaseGenerator):
                     state_sentences.append(
                         In(
                             entity=self.dim2_idx_to_obj[o],
-                            coordenate=self.dim0_idx_to_obj[loc],
+                            coordinate=self.dim0_idx_to_obj[loc],
                             shape_str=(self.shape_str[0], self.shape_str[2]),
                         ))
                 # Regarding actos in nowhere, there is no sentece.
@@ -1313,7 +1313,7 @@ class ComplexTracking(BaseGenerator):
                             sentences.append(
                                 In(
                                     entity=dict_e[entity],
-                                    coordenate=dict_c[loc],
+                                    coordinate=dict_c[loc],
                                     shape_str=shape_str,
                                 ))
                         else:
@@ -1322,7 +1322,7 @@ class ComplexTracking(BaseGenerator):
                                 sentences.append(
                                     Out(
                                         entity=dict_e[entity],
-                                        coordenate=dict_c[l_i - anti_loc],
+                                        coordinate=dict_c[l_i - anti_loc],
                                         shape_str=shape_str,
                                     ))
                     return sentences
@@ -1344,7 +1344,7 @@ class ComplexTracking(BaseGenerator):
                                 state_sentences.append(
                                     In(
                                         entity=self.dim2_idx_to_obj[o],
-                                        coordenate=self.dim1_idx_to_obj[a],
+                                        coordinate=self.dim1_idx_to_obj[a],
                                         shape_str=(self.shape_str[1],
                                                    self.shape_str[2]),
                                     ))
@@ -1398,21 +1398,21 @@ class ComplexTracking(BaseGenerator):
 
                 if prev_coord == uncertainty:
                     transition_sentences = To(entity=entity,
-                                              coordenate=next_coord,
+                                              coordinate=next_coord,
                                               shape_str=shape_str)
                 elif next_coord == uncertainty:
                     transition_sentences = From(entity=entity,
-                                                coordenate=prev_coord,
+                                                coordinate=prev_coord,
                                                 shape_str=shape_str)
                 else:
                     transition_sentences = random.choice([
                         To(entity=entity,
-                           coordenate=next_coord,
+                           coordinate=next_coord,
                            shape_str=shape_str),
                         FromTo(
                             entity=entity,
-                            coordenate1=prev_coord,
-                            coordenate2=next_coord,
+                            coordinate1=prev_coord,
+                            coordinate2=next_coord,
                             shape_str=shape_str,
                         ),
                     ])
@@ -1428,24 +1428,24 @@ class ComplexTracking(BaseGenerator):
                 if idx_prev_coord[0] >= anti_loc:
                     next_coord = coord_map[idx_next_coord[0]]
                     transition_sentences = To(entity=entity,
-                                              coordenate=next_coord,
+                                              coordinate=next_coord,
                                               shape_str=shape_str)
                 elif idx_next_coord[0] >= anti_loc:
                     prev_coord = coord_map[idx_prev_coord[0]]
                     transition_sentences = From(entity=entity,
-                                                coordenate=prev_coord,
+                                                coordinate=prev_coord,
                                                 shape_str=shape_str)
                 else:
                     prev_coord = coord_map[idx_prev_coord[0]]
                     next_coord = coord_map[idx_next_coord[0]]
                     transition_sentences = random.choice([
                         To(entity=entity,
-                           coordenate=next_coord,
+                           coordinate=next_coord,
                            shape_str=shape_str),
                         FromTo(
                             entity=entity,
-                            coordenate1=prev_coord,
-                            coordenate2=next_coord,
+                            coordinate1=prev_coord,
+                            coordinate2=next_coord,
                             shape_str=shape_str,
                         ),
                     ])
@@ -1476,7 +1476,7 @@ class ComplexTracking(BaseGenerator):
             story=story,
             question=self.topic.get_question(),
             answer=self.topic.get_answer(),
-            response_templates=self.topic.get_reponse_tempalte(),
+            response_templates=self.topic.get_response_template(),
         )
 
         self.fol = world_enumerate + story

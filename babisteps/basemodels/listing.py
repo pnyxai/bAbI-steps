@@ -7,7 +7,7 @@ from pydantic import BaseModel, model_validator
 from babisteps.basemodels.generators import (
     ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
     REPLACE_PLACEHOLDER, UNKNONW_ANSWERS, SimpleTrackerBaseGenerator)
-from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.basemodels.nodes import Coordinate, Entity
 
 # -------------------------
 # Answer
@@ -19,7 +19,7 @@ ANSWER_OPTION_QTY = 6
 class ListingRequest(BaseModel):
     answer: Any
     entities: Optional[list[Entity]] = None
-    coordenate: Optional[Coordenate] = None
+    coordinate: Optional[Coordinate] = None
 
     def get_question(self):
         pass
@@ -39,7 +39,7 @@ class ActorInLocationWho(ListingRequest):
         return self
 
     def get_question(self) -> str:
-        return f"Who is in the {self.coordenate.name}?"
+        return f"Who is in the {self.coordinate.name}?"
 
     def get_answer(self) -> list[str]:
         if isinstance(self.answer, int):
@@ -53,14 +53,14 @@ class ActorInLocationWho(ListingRequest):
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
             )
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
-            f"{REPLACE_PLACEHOLDER} who is in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER} who is in the {self.coordinate.name}",
             "none":
-            f"{REPLACE_PLACEHOLDER} is in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER} is in the {self.coordinate.name}",
             "designated_entities":
-            f"{REPLACE_PLACEHOLDER} are in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER} are in the {self.coordinate.name}",
         }
 
 
@@ -75,7 +75,7 @@ class ActorWithObjectWhat(ListingRequest):
         return self
 
     def get_question(self) -> str:
-        return f"What has {self.coordenate.name} got?"
+        return f"What has {self.coordinate.name} got?"
 
     def get_answer(self) -> list[str]:
         if isinstance(self.answer, int):
@@ -87,14 +87,14 @@ class ActorWithObjectWhat(ListingRequest):
                 "Invalid answer, should be 'designated_entities', 'none' or 'unknown'"
             )
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
-            f"{REPLACE_PLACEHOLDER} what has {self.coordenate.name} got",
+            f"{REPLACE_PLACEHOLDER} what has {self.coordinate.name} got",
             "none":
-            f"{self.coordenate.name} has got {REPLACE_PLACEHOLDER}",
+            f"{self.coordinate.name} has got {REPLACE_PLACEHOLDER}",
             "designated_entities":
-            f"{self.coordenate.name} have got the {REPLACE_PLACEHOLDER}",
+            f"{self.coordinate.name} have got the {REPLACE_PLACEHOLDER}",
         }
 
 
@@ -107,8 +107,8 @@ class Listing(SimpleTrackerBaseGenerator):
             ActorInLocationWho: self._actor_in_location_who,
             ActorWithObjectWhat: self._actor_with_object_what,
         }
-        uncertainty_mapping: dict[type[ListingRequest], Coordenate] = {
-            ActorInLocationWho: Coordenate(name="nowhere"),
+        uncertainty_mapping: dict[type[ListingRequest], Coordinate] = {
+            ActorInLocationWho: Coordinate(name="nowhere"),
             ActorWithObjectWhat: None,
         }
 
@@ -164,12 +164,12 @@ class Listing(SimpleTrackerBaseGenerator):
         return [list(comb) for comb in result]
 
     def _actor_in_location_who(self):
-        c = self.model.coordenates[0]
-        self.topic.coordenate = c
+        c = self.model.coordinates[0]
+        self.topic.coordinate = c
         if isinstance(self.topic.answer, int):
             e = self.model.entities[:self.topic.answer]
             self.topic.entities = e
-        self.model.coordenates.append(self.uncertainty)
+        self.model.coordinates.append(self.uncertainty)
         self._create_aux()
         self.logger.debug(
             "Creating _actor_in_location_who",
@@ -213,9 +213,9 @@ class Listing(SimpleTrackerBaseGenerator):
                         x_ue = self.e2idx[ue]
                         if x_ue in EIU:
                             self.logger.debug(
-                                "Trying to place entity from NW to coordenate c",
+                                "Trying to place entity from NW to coordinate c",
                                 entity=x_ue,
-                                coordenate=self.c2idx[c],
+                                coordinate=self.c2idx[c],
                                 left=len(EIU) - 1,
                             )
                             condition = lambda x, x_ue=x_ue: x[0, x_ue] == 1
@@ -264,12 +264,12 @@ class Listing(SimpleTrackerBaseGenerator):
         return states
 
     def _actor_with_object_what(self):
-        c = self.model.coordenates[0]
-        self.topic.coordenate = c
+        c = self.model.coordinates[0]
+        self.topic.coordinate = c
         if isinstance(self.topic.answer, int):
             e = self.model.entities[:self.topic.answer]
             self.topic.entities = e
-        self.model.coordenates.append(self.uncertainty)
+        self.model.coordinates.append(self.uncertainty)
         self._create_aux()
         self.logger.debug(
             "Creating _actor_with_object_what",

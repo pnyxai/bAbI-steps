@@ -4,7 +4,8 @@ from typing import Union
 
 from pydantic import BaseModel
 
-from babisteps.basemodels.nodes import Coordenate, Entity, Relationship
+from babisteps.basemodels.nodes import (Coordinate, Entity, Relationship,
+                                        TemporalTrackingEvent)
 
 
 class FOL(BaseModel, ABC):
@@ -17,7 +18,7 @@ class FOL(BaseModel, ABC):
 
 
 class Exists(FOL):
-    thing: Union[Entity, Coordenate]
+    thing: Union[Entity, Coordinate]
     shape_str: str
 
     def to_nl(self):
@@ -34,11 +35,11 @@ class Exists(FOL):
 
 
 class In(FOL):
-    entity: Union[Entity, Coordenate]
-    coordenate: Union[Entity, Coordenate]
+    entity: Union[Entity, Coordinate]
+    coordinate: Union[Entity, Coordinate]
 
     def to_nl(self) -> str:
-        e, c = self.entity.name, self.coordenate.name
+        e, c = self.entity.name, self.coordinate.name
 
         if self.shape_str == ("locations", "actors"):
             return f"{e} is in the {c}."
@@ -55,11 +56,11 @@ class In(FOL):
 
 
 class To(FOL):
-    entity: Union[Entity, Coordenate]
-    coordenate: Union[Entity, Coordenate]
+    entity: Union[Entity, Coordinate]
+    coordinate: Union[Entity, Coordinate]
 
     def to_nl(self) -> str:
-        e, c = self.entity.name, self.coordenate.name
+        e, c = self.entity.name, self.coordinate.name
 
         if self.shape_str == ("locations", "actors"):
             options = [
@@ -91,11 +92,11 @@ class To(FOL):
 
 
 class From(FOL):
-    entity: Union[Entity, Coordenate]
-    coordenate: Union[Entity, Coordenate]
+    entity: Union[Entity, Coordinate]
+    coordinate: Union[Entity, Coordinate]
 
     def to_nl(self) -> str:
-        e, c = self.entity.name, self.coordenate.name
+        e, c = self.entity.name, self.coordinate.name
         if self.shape_str == ("locations", "actors"):
             options = [
                 f"{e} left the {c}.",
@@ -123,15 +124,15 @@ class From(FOL):
 
 
 class FromTo(FOL):
-    entity: Union[Entity, Coordenate]
-    coordenate1: Union[Entity, Coordenate]
-    coordenate2: Union[Entity, Coordenate]
+    entity: Union[Entity, Coordinate]
+    coordinate1: Union[Entity, Coordinate]
+    coordinate2: Union[Entity, Coordinate]
 
     def to_nl(self) -> str:
         e, c1, c2 = (
             self.entity.name,
-            self.coordenate1.name,
-            self.coordenate2.name,
+            self.coordinate1.name,
+            self.coordinate2.name,
         )
 
         if self.shape_str == ("locations", "actors"):
@@ -163,11 +164,11 @@ class FromTo(FOL):
 
 
 class Out(FOL):
-    entity: Union[Entity, Coordenate]
-    coordenate: Union[Entity, Coordenate]
+    entity: Union[Entity, Coordinate]
+    coordinate: Union[Entity, Coordinate]
 
     def to_nl(self) -> str:
-        e, c = self.entity.name, self.coordenate.name
+        e, c = self.entity.name, self.coordinate.name
 
         if self.shape_str == ("locations", "actors"):
             options = [
@@ -214,3 +215,28 @@ class IsRelated(FOL):
             return random.choice(options)
         else:
             raise ValueError("Invalid types for IsRelated relation")
+
+
+class IsTemporalRelated(FOL):
+    relation: Relationship
+    event0: TemporalTrackingEvent
+    event1: TemporalTrackingEvent
+
+    def to_nl(self):
+        e0, e1 = self.event0, self.event1
+        if self.shape_str == ("locations", "actors"):
+            # check if the event has the same entities in order to avoid repetition
+            if e0.entity == e1.entity:
+                options = [
+                    f"{e0.entity.name} went to the {e0.coordinate.name} {random.choice(self.relation.base)} going to the {e1.coordinate.name}.",  # noqa: E501
+                    f"{e0.entity.name} went to the {e1.coordinate.name} {random.choice(self.relation.opposite)} going to the {e0.coordinate.name}."  # noqa: E501
+                ]
+            else:
+                options = [
+                    f"{e0.entity.name} went to the {e0.coordinate.name} {random.choice(self.relation.base)} {e1.entity.name} went to the {e1.coordinate.name}.",  # noqa: E501
+                    f"{e1.entity.name} went to the {e1.coordinate.name} {random.choice(self.relation.opposite)} {e0.entity.name} went to the {e0.coordinate.name}."  # noqa: E501
+                ]
+
+            return random.choice(options)
+        else:
+            raise ValueError("Invalid types for IsTemporalRelated relation")

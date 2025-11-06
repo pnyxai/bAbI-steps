@@ -13,8 +13,8 @@ from sparse import DOK, SparseArray
 from babisteps import logger
 from babisteps.basemodels.FOL import (FOL, Exists, From, FromTo, In, IsRelated,
                                       To)
-from babisteps.basemodels.nodes import (Coordenate, Entity,
-                                        EntityInCoordenateState,
+from babisteps.basemodels.nodes import (Coordinate, Entity,
+                                        EntityInCoordinateState,
                                         ImmediateGraph, Relationship, State)
 from babisteps.basemodels.stories import Story
 
@@ -109,7 +109,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
     model: Any
     states_qty: int
     topic: Any
-    uncertainty: Optional[Coordenate] = None
+    uncertainty: Optional[Coordinate] = None
     states: Optional[list[State]] = None
     deltas: Optional[Any] = None
     story: Optional[Story] = None
@@ -138,11 +138,11 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
         pass
 
     def _create_aux(self):
-        self.shape = (len(self.model.coordenates), len(self.model.entities))
+        self.shape = (len(self.model.coordinates), len(self.model.entities))
         self.idx2e = {i: e for i, e in enumerate(self.model.entities)}
         self.e2idx = {e: i for i, e in enumerate(self.model.entities)}
-        self.idx2c = {i: c for i, c in enumerate(self.model.coordenates)}
-        self.c2idx = {c: i for i, c in enumerate(self.model.coordenates)}
+        self.idx2c = {i: c for i, c in enumerate(self.model.coordinates)}
+        self.c2idx = {c: i for i, c in enumerate(self.model.coordinates)}
         return
 
     def create_ontology(self):
@@ -153,19 +153,19 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
     def create_new_state(
         self,
         j: int,
-        state: EntityInCoordenateState,
+        state: EntityInCoordinateState,
         condition: Callable,
-    ) -> EntityInCoordenateState:
+    ) -> EntityInCoordinateState:
         """
         Create a new state for an entity in a location based on the current state and
         the given conditions.
         Args:
             j (int): An identifier for the state.
-            state (EntityInCoordenateState): The current state of derive a new one.
+            state (EntityInCoordinateState): The current state of derive a new one.
             condition (Callable): A callable that represents a condition to meet by
             the transition.
         Returns:
-            EntityInCoordenateState: The new state of the entity in the location after
+            EntityInCoordinateState: The new state of the entity in the location after
             applying the transitions.
         """
 
@@ -173,14 +173,14 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
             self.num_transitions,
             condition,
         )
-        new_state = EntityInCoordenateState(am=new_am,
+        new_state = EntityInCoordinateState(am=new_am,
                                             index=j,
                                             verbosity=self.verbosity,
                                             log_file=self.log_file)
         return new_state
 
     def initialize_state(self, i: int,
-                         condition: Callable) -> EntityInCoordenateState:
+                         condition: Callable) -> EntityInCoordinateState:
         """
         Initializes the state for an entity in a location based on a given condition.
         Args:
@@ -189,7 +189,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
             boolean indicating
                                   whether the condition is met.
         Returns:
-            EntityInCoordenateState: A initialized state that meets the given condition.
+            EntityInCoordinateState: A initialized state that meets the given condition.
         """
 
         self.logger.debug("Creating Answer:", i=i)
@@ -206,25 +206,25 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
                           i=i)
         return s
 
-    def create_random_state(self, i: int) -> EntityInCoordenateState:
+    def create_random_state(self, i: int) -> EntityInCoordinateState:
         """
-        Creates a random state for entities in coordenates.
+        Creates a random state for entities in coordinates.
         Args:
             i (int): The index to be assigned to the generated state.
         Returns:
-            EntityInCoordenateState: A state represented as an adjacency matrix,
+            EntityInCoordinateState: A state represented as an adjacency matrix,
             in sparse format (DOK).
         """
 
         entities = np.arange(self.shape[1])
-        coordenates = np.random.choice(self.shape[0],
+        coordinates = np.random.choice(self.shape[0],
                                        self.shape[1],
                                        replace=True)
         sparse_matrix = DOK(shape=self.shape, dtype=int, fill_value=0)
-        entity_coord_pairs = list(zip(coordenates, entities))
+        entity_coord_pairs = list(zip(coordinates, entities))
         for x, y in entity_coord_pairs:
             sparse_matrix[x, y] = 1
-        s = EntityInCoordenateState(am=sparse_matrix,
+        s = EntityInCoordinateState(am=sparse_matrix,
                                     index=i,
                                     verbosity=self.verbosity,
                                     log_file=self.log_file)
@@ -258,7 +258,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
 
     def create_fol(self):
 
-        def enumerate_model(element: Union[list[Entity], list[Coordenate]],
+        def enumerate_model(element: Union[list[Entity], list[Coordinate]],
                             shape_type: str) -> list[list]:
             enumeration = []
             for e in element:
@@ -273,7 +273,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
                 e, c = self.idx2e[y], self.idx2c[x]
                 if c != self.uncertainty:
                     state_sentences.append(
-                        In(entity=e, coordenate=c, shape_str=self.shape_str))
+                        In(entity=e, coordinate=c, shape_str=self.shape_str))
             return state_sentences
 
         def describe_transitions(state: State) -> list[list]:
@@ -291,14 +291,14 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
                     transition_sentences.append(
                         To(
                             entity=entity,
-                            coordenate=next_coord,
+                            coordinate=next_coord,
                             shape_str=self.shape_str,
                         ))
                 elif next_coord == self.uncertainty:
                     transition_sentences.append(
                         From(
                             entity=entity,
-                            coordenate=prev_coord,
+                            coordinate=prev_coord,
                             shape_str=self.shape_str,
                         ))
                 else:
@@ -306,13 +306,13 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
                         random.choice([
                             To(
                                 entity=entity,
-                                coordenate=next_coord,
+                                coordinate=next_coord,
                                 shape_str=self.shape_str,
                             ),
                             FromTo(
                                 entity=entity,
-                                coordenate1=prev_coord,
-                                coordenate2=next_coord,
+                                coordinate1=prev_coord,
+                                coordinate2=next_coord,
                                 shape_str=self.shape_str,
                             ),
                         ]))
@@ -337,7 +337,7 @@ class SimpleTrackerBaseGenerator(BaseGenerator):
             story=story,
             question=self.topic.get_question(),
             answer=self.topic.get_answer(),
-            response_templates=self.topic.get_reponse_tempalte(),
+            response_templates=self.topic.get_response_template(),
         )
         self.fol = world_enumerate + story
 
@@ -380,7 +380,7 @@ class OrderRequest(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         """Abstract method to generate the answer context template"""
         pass
 
@@ -410,7 +410,7 @@ class OrderRequestPolar(OrderRequest):
         else:
             raise ValueError("'answer' must be 'yes', 'no', or 'unknown'")
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         if self.shape_str in [("locations", ), ("objects", )]:
             return {
                 "unknown":
@@ -511,7 +511,7 @@ class OrderRequestHow(OrderRequest):
         self.answer = original_answer
         return options
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         if self.shape_str in [("locations", ), ("objects", )]:
             # f"How is the {self.e1.name} related to the {self.e0.name}?"
             return {
@@ -575,7 +575,7 @@ class OrderRequestWhat(OrderRequest):
             raise ValueError(
                 "'answer' must be 'second_entity', 'none', or 'unknown'")
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         if self.shape_str in [("locations", ), ("objects", )]:
             return {
                 "unknown":
@@ -668,14 +668,25 @@ class OrderBaseGenerator(BaseGenerator):
         n: int,
     ):
         # TODO: Add description
+        if len(g.edges) >= n:
+            self.logger.info(
+                "Initial number of edges is already greater or equal to n. No edges will be added.",
+                initial_edges=len(g.edges),
+                n=n)
+            return matrix, g
         nans = np.isnan(matrix.todense())
         origin_mask = ~nans
         origin_vals = matrix.todense()[origin_mask]
         nans = np.argwhere(nans)
+        self.logger.debug("Starting to fill edges",
+                          initial_edges=len(g.edges),
+                          target_edges=n,
+                          available_positions=len(nans))
         while len(nans) > 0:
             c = np.random.choice(len(nans))
             c = nans[c]
             i, j = int(c[0]), int(c[1])
+            # self.logger.debug("Trying to add edge", edge=(i, j))
             matrix_aux = deepcopy(matrix)
             g_aux = deepcopy(g)
             matrix_aux[i, j] = 1
@@ -685,14 +696,28 @@ class OrderBaseGenerator(BaseGenerator):
             # validate that origin_vals are not changed
             new_vals = matrix_aux.todense()[origin_mask]
             if not np.array_equal(origin_vals, new_vals):
+                self.logger.debug(
+                    "Edge addition failed: origin values changed", edge=(i, j))
                 matrix[i, j] = 0
+                nans = np.argwhere(np.isnan(matrix.todense()))
                 continue
-            if len(g_aux.edges) == n:
+
+            num_edges = len(g_aux.edges)
+            self.logger.debug("Edge added, graph has now", num_edges=num_edges)
+
+            if num_edges == n:
+                self.logger.debug("Target edge count reached", num_edges=n)
                 return matrix_aux, g_aux
-            elif len(g_aux.edges) < n:
+            elif num_edges < n:
+                self.logger.debug("Edge accepted",
+                                  edge=(i, j),
+                                  num_edges=num_edges)
                 matrix = matrix_aux
                 g = g_aux
-            elif len(g_aux.edges) > n:
+            elif num_edges > n:
+                self.logger.debug("Edge rejected, too many edges",
+                                  edge=(i, j),
+                                  num_edges=num_edges)
                 matrix[i, j] = 0
             else:
                 raise ValueError("This should not happen")
@@ -790,7 +815,7 @@ class OrderBaseGenerator(BaseGenerator):
             story=story,
             question=self.topic.get_question(),
             answer=self.topic.get_answer(),
-            response_templates=self.topic.get_reponse_tempalte(),
+            response_templates=self.topic.get_response_template(),
         )
         # FOL
         self.fol = world_enumerate + story

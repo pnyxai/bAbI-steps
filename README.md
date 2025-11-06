@@ -1,10 +1,4 @@
-# Title: TODO
-
-# Abstract: TODO
-
-# Topics: TODO
-
-# Babisteps Dataset Generator
+# bAbI-steps Dataset Generator
 
 `main.py`, generates datasets of stories based on the task configurations found in the tasks folder. It performs the following operations:
 
@@ -25,6 +19,8 @@ The following command-line arguments can be used to customize the behavior of th
 - **`--seed:`** Random seed for Python's random module.
 - **`--numpy_random_seed:`** Random seed for NumPy's random module.
 - **`--verbosity:`** or **`-v`** Controls the reported logging error level. (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
+- **`--num_workers:`** Number of parallel workers for task processing. Set to 1 to disable parallelization.
+- **`--optimistic_generation`:** If `1` (default), skip failed samples and continue. If `0`, fail the entire process when max generation retries are reached.
 
 ## Example Usage
 
@@ -39,7 +35,7 @@ python3 main.py
 
 Before continue, be sure you have installed `lm-eval-harness`
 
-##### local-completions
+##### `local-completions`
 
 ```bash
 lm_eval \
@@ -52,7 +48,7 @@ lm_eval \
 --log_samples
 ```
 
-##### local-chat-completions
+##### `local-chat-completions`
 
 ```bash
 lm_eval \
@@ -68,6 +64,18 @@ lm_eval \
 --log_samples
 ```
 
-Note:
-* Reasoner models would consume much more tokens, probably you should tweak `--gen_kwargs max_tokens=8192,timeout=600` params accordingly.
-* Remove `--limit x` if you want to evaluate over the entire generated dataset.
+>Note:
+>
+> * Reasoner models would consume much more tokens, probably you should tweak `--gen_kwargs max_tokens=8192,timeout=600` params accordingly.
+>
+> * Remove `--limit x` if you want to evaluate over the entire generated dataset.
+
+
+# Paper-Title: TODO
+Abstract:
+> TODO
+
+## Cite as:
+```
+TODO
+```
