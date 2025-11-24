@@ -1,5 +1,5 @@
 task_name: simpletracking
 entities: 6
-coordenates: 3
+coordinates: 3
 gen_kwargs:
 func: utils._get_generators

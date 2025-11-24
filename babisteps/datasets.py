@@ -12,6 +12,7 @@ TASKS2NAME = {
     "6": "spatialorder",
     "7": "temporalorder",
     "8": "pathfinding",
+    "9": "temporaltracking",
 }
 
 NAME2TASK = {value: key for key, value in TASKS2NAME.items()}
@@ -47,6 +48,7 @@ The available tasks are:
 | 6       | spatialorder| train, validation, test |
 | 7       | temporalorder| train, validation, test |
 | 8       | pathfinding| train, validation, test |
+| 9       | temporaltracking| train, validation, test |
 
 
 ### PAPER NAME

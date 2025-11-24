@@ -32,7 +32,7 @@ class PathFindingRequest(BaseModel):
         pass
 
     @abstractmethod
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         """Abstract method to generate the answer context template"""
         pass
 
@@ -61,7 +61,7 @@ class PathFindingRequestWhich(PathFindingRequest):
         elif isinstance(self.answer, int):
             return [location.name for location in self.path]
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
             f"{REPLACE_PLACEHOLDER} how to get from the {self.path[0].name} to the {self.path[-1].name}.",

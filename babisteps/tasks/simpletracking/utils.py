@@ -7,14 +7,14 @@ import numpy as np
 import yaml
 
 from babisteps.basemodels.generators import DELIM
-from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.basemodels.nodes import Coordinate, Entity
 from babisteps.basemodels.simpletracking import (ActorInLocationPolar,
                                                  ActorInLocationWhere,
                                                  ActorInLocationWho,
                                                  ActorWithObjectPolar,
                                                  ActorWithObjectWhat,
                                                  ActorWithObjectWho,
-                                                 EntitiesInCoordenates,
+                                                 EntitiesInCoordinates,
                                                  SimpleTracker)
 from babisteps.proccesing import prepare_path
 from babisteps.utils import generate_framework
@@ -50,7 +50,7 @@ def _get_generators(**kwargs):
     folder_path = prepare_path(output_path, folder_name)
     log_file = os.path.join(folder_path, "logs.txt")
     n_entities = yaml_cfg.get("entities")
-    n_coordenates = yaml_cfg.get("coordenates")
+    n_coordinates = yaml_cfg.get("coordinates")
 
     def generator_func(leaf, answer, i):
 
@@ -65,8 +65,8 @@ def _get_generators(**kwargs):
             entities_g = np.random.choice(total_actors,
                                           size=n_entities,
                                           replace=False).tolist()
-            coordenates_g = np.random.choice(total_locations,
-                                             size=n_coordenates,
+            coordinates_g = np.random.choice(total_locations,
+                                             size=n_coordinates,
                                              replace=False).tolist()
         elif leaf in [
                 ActorWithObjectPolar,
@@ -77,16 +77,16 @@ def _get_generators(**kwargs):
             entities_g = np.random.choice(total_objects,
                                           size=n_entities,
                                           replace=False).tolist()
-            coordenates_g = np.random.choice(total_actors,
-                                             size=n_coordenates,
+            coordinates_g = np.random.choice(total_actors,
+                                             size=n_coordinates,
                                              replace=False).tolist()
 
         entities = [Entity(name=entity) for entity in entities_g]
-        coordenates = [
-            Coordenate(name=coordenate) for coordenate in coordenates_g
+        coordinates = [
+            Coordinate(name=coordinate) for coordinate in coordinates_g
         ]
-        model = EntitiesInCoordenates(entities=entities,
-                                      coordenates=coordenates)
+        model = EntitiesInCoordinates(entities=entities,
+                                      coordinates=coordinates)
         runtime_name = leaf.__name__ + DELIM + answer + DELIM + str(i)
         topic = leaf(answer=answer)
         generator = SimpleTracker(

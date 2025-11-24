@@ -6,7 +6,7 @@ from pydantic import BaseModel, model_validator
 from babisteps.basemodels.generators import (
     ACTORS_NONE_ANSWERS, DELIM, OBJECTS_LOCATION_EVENT_NONE_ANSWERS,
     REPLACE_PLACEHOLDER, UNKNONW_ANSWERS, SimpleTrackerBaseGenerator)
-from babisteps.basemodels.nodes import Coordenate, Entity
+from babisteps.basemodels.nodes import Coordinate, Entity
 
 # -------------------------
 # Answer
@@ -16,7 +16,7 @@ from babisteps.basemodels.nodes import Coordenate, Entity
 class SimpleTrackerRequest(BaseModel):
     answer: Any
     entity: Optional[Entity] = None
-    coordenate: Optional[Coordenate] = None
+    coordinate: Optional[Coordinate] = None
 
     def get_question(self):
         pass
@@ -24,7 +24,7 @@ class SimpleTrackerRequest(BaseModel):
     def get_answer(self):
         pass
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         pass
 
 
@@ -32,7 +32,7 @@ class ActorInLocationPolar(SimpleTrackerRequest):
     answer: Literal["yes", "no", "unknown"]
 
     def get_question(self):
-        return f"Is {self.entity.name} in the {self.coordenate.name}?"
+        return f"Is {self.entity.name} in the {self.coordinate.name}?"
 
     def get_answer(self):
         if self.answer == "yes" or self.answer == "no":
@@ -40,14 +40,14 @@ class ActorInLocationPolar(SimpleTrackerRequest):
         elif self.answer == "unknown":
             return UNKNONW_ANSWERS
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
-            f"{REPLACE_PLACEHOLDER} if {self.entity.name} is in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER} if {self.entity.name} is in the {self.coordinate.name}",
             "yes":
-            f"{REPLACE_PLACEHOLDER}, {self.entity.name} is in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER}, {self.entity.name} is in the {self.coordinate.name}",
             "no":
-            f"{REPLACE_PLACEHOLDER}, {self.entity.name} is not in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER}, {self.entity.name} is not in the {self.coordinate.name}",
         }
 
 
@@ -55,7 +55,7 @@ class ActorInLocationWho(SimpleTrackerRequest):
     answer: Literal["designated_entity", "none", "unknown"]
 
     def get_question(self):
-        return f"Who is in the {self.coordenate.name}?"
+        return f"Who is in the {self.coordinate.name}?"
 
     def get_answer(self):
         if self.answer == "designated_entity":
@@ -69,14 +69,14 @@ class ActorInLocationWho(SimpleTrackerRequest):
                 "Invalid answer, should be 'designated_entity', 'none' or 'unknown'"
             )
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
-            f"{REPLACE_PLACEHOLDER} who is in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER} who is in the {self.coordinate.name}",
             "none":
-            f"{REPLACE_PLACEHOLDER} is in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER} is in the {self.coordinate.name}",
             "designated_entity":
-            f"{REPLACE_PLACEHOLDER} is in the {self.coordenate.name}",
+            f"{REPLACE_PLACEHOLDER} is in the {self.coordinate.name}",
         }
 
 
@@ -88,7 +88,7 @@ class ActorInLocationWhere(SimpleTrackerRequest):
 
     def get_answer(self):
         if self.answer == "designated_location":
-            return [self.coordenate.name]
+            return [self.coordinate.name]
         elif self.answer == "unknown":
             return UNKNONW_ANSWERS
         else:
@@ -96,7 +96,7 @@ class ActorInLocationWhere(SimpleTrackerRequest):
                 "Invalid answer value, should be 'designated_location' or 'unknown'"
             )
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "unknown":
             f"{REPLACE_PLACEHOLDER} where {self.entity.name} is",
@@ -109,19 +109,19 @@ class ActorWithObjectPolar(SimpleTrackerRequest):
     answer: Literal["yes", "no"]
 
     def get_question(self):
-        return f"Has {self.coordenate.name} got the {self.entity.name}?"
+        return f"Has {self.coordinate.name} got the {self.entity.name}?"
 
     def get_answer(self):
         return [self.answer]
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "yes":
-            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} has got the {self.entity.name}",
+            f"{REPLACE_PLACEHOLDER}, {self.coordinate.name} has got the {self.entity.name}",
             "no":
-            f"{REPLACE_PLACEHOLDER}, {self.coordenate.name} hasn't got the {self.entity.name}",
+            f"{REPLACE_PLACEHOLDER}, {self.coordinate.name} hasn't got the {self.entity.name}",
             "unknown":
-            f"{REPLACE_PLACEHOLDER} if {self.coordenate.name} has got the {self.entity.name}",
+            f"{REPLACE_PLACEHOLDER} if {self.coordinate.name} has got the {self.entity.name}",
         }
 
 
@@ -129,7 +129,7 @@ class ActorWithObjectWhat(SimpleTrackerRequest):
     answer: Literal["designated_object", "none"]
 
     def get_question(self):
-        return f"What has {self.coordenate.name} got?"
+        return f"What has {self.coordinate.name} got?"
 
     def get_answer(self) -> list[str]:
         if self.answer == "designated_object":
@@ -141,14 +141,14 @@ class ActorWithObjectWhat(SimpleTrackerRequest):
                 "Invalid answer value, should be 'designated_object' or 'none'"
             )
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "none":
-            f"{self.coordenate.name} has got {REPLACE_PLACEHOLDER}",
+            f"{self.coordinate.name} has got {REPLACE_PLACEHOLDER}",
             "designated_object":
-            f"{self.coordenate.name} has got the {REPLACE_PLACEHOLDER}",
+            f"{self.coordinate.name} has got the {REPLACE_PLACEHOLDER}",
             "unknown":
-            f"{REPLACE_PLACEHOLDER} what {self.coordenate.name} has got",
+            f"{REPLACE_PLACEHOLDER} what {self.coordinate.name} has got",
         }
 
 
@@ -160,7 +160,7 @@ class ActorWithObjectWho(SimpleTrackerRequest):
 
     def get_answer(self):
         if self.answer == "designated_actor":
-            return [self.coordenate.name]
+            return [self.coordinate.name]
         elif self.answer == "none":
             return ACTORS_NONE_ANSWERS
         else:
@@ -168,7 +168,7 @@ class ActorWithObjectWho(SimpleTrackerRequest):
                 "Invalid answer value, should be 'designated_actor' or 'unknown'"
             )
 
-    def get_reponse_tempalte(self):
+    def get_response_template(self):
         return {
             "none": f"{REPLACE_PLACEHOLDER} has got the {self.entity.name}",
             "designated_actor":
@@ -183,20 +183,20 @@ class ActorWithObjectWho(SimpleTrackerRequest):
 # -------------------------
 
 
-class EntitiesInCoordenates(BaseModel):
+class EntitiesInCoordinates(BaseModel):
     entities: list[Entity]
-    coordenates: list[Coordenate]
+    coordinates: list[Coordinate]
 
     @model_validator(mode="after")
     def _shuffle(self):
         random.shuffle(self.entities)
-        random.shuffle(self.coordenates)
+        random.shuffle(self.coordinates)
         return self
 
     @property
     def as_tuple(self):
         return (
-            self.coordenates,
+            self.coordinates,
             self.entities,
         )
 
@@ -214,13 +214,13 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             ActorWithObjectWhat: self._actor_with_object_what,
             ActorWithObjectWho: self._actor_with_object_who,
         }
-        uncertainty_mapping: dict[type[SimpleTrackerRequest], Coordenate] = {
-            ActorInLocationPolar: Coordenate(name="nowhere"),
-            ActorInLocationWho: Coordenate(name="nowhere"),
-            ActorInLocationWhere: Coordenate(name="nowhere"),
+        uncertainty_mapping: dict[type[SimpleTrackerRequest], Coordinate] = {
+            ActorInLocationPolar: Coordinate(name="nowhere"),
+            ActorInLocationWho: Coordinate(name="nowhere"),
+            ActorInLocationWhere: Coordinate(name="nowhere"),
             ActorWithObjectPolar: None,
             ActorWithObjectWhat: None,
-            ActorWithObjectWho: Coordenate(name="nobody"),
+            ActorWithObjectWho: Coordinate(name="nobody"),
         }
 
         # Get the type of the answer
@@ -239,9 +239,9 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
     def _actor_in_location_polar(self):
         """
         Creates an ontology based on the current state of entities and their
-        coordenates.
+        coordinates.
         This method initializes and updates the states of entities (entities) in
-        various coordenates
+        various coordinates
         based on the provided answer. The states are created and modified according to
         the following rules:
         - If `answer` is 1: The entity `e` is in coord `c`.
@@ -252,11 +252,11 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
         """
 
         e = self.model.entities[0]
-        c = self.model.coordenates[0]
+        c = self.model.coordinates[0]
 
         self.topic.entity = e
-        self.topic.coordenate = c
-        self.model.coordenates.append(self.uncertainty)
+        self.topic.coordinate = c
+        self.model.coordinates.append(self.uncertainty)
         self._create_aux()
         self.logger.debug(
             "Creating _actor_in_location_polar",
@@ -336,10 +336,10 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
 
     def _actor_in_location_who(self):
         e = self.model.entities[0]
-        c = self.model.coordenates[0]
+        c = self.model.coordinates[0]
         self.topic.entity = e
-        self.topic.coordenate = c
-        self.model.coordenates.append(self.uncertainty)
+        self.topic.coordinate = c
+        self.model.coordinates.append(self.uncertainty)
         self._create_aux()
         self.logger.debug(
             "Creating _actor_in_location_who",
@@ -381,9 +381,9 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
                         x_ue = self.e2idx[ue]
                         if x_ue in EIU:
                             self.logger.debug(
-                                "Trying to place entity from NW to coordenate c",
+                                "Trying to place entity from NW to coordinate c",
                                 entity=x_ue,
-                                coordenate=self.c2idx[c],
+                                coordinate=self.c2idx[c],
                                 left=len(EIU) - 1,
                             )
                             condition = lambda x, x_ue=x_ue: x[0, x_ue] == 1
@@ -432,10 +432,10 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
 
     def _actor_in_location_where(self):
         e = self.model.entities[0]
-        c = self.model.coordenates[0]
+        c = self.model.coordinates[0]
         self.topic.entity = e
-        self.topic.coordenate = c
-        self.model.coordenates.append(self.uncertainty)
+        self.topic.coordinate = c
+        self.model.coordinates.append(self.uncertainty)
         self._create_aux()
         self.logger.debug(
             "Creating _actor_in_location_where",
@@ -469,10 +469,10 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
 
     def _actor_with_object_polar(self):
         e = self.model.entities[0]
-        c = self.model.coordenates[0]
+        c = self.model.coordinates[0]
         self.topic.entity = e
-        self.topic.coordenate = c
-        self.model.coordenates.append(self.uncertainty)
+        self.topic.coordinate = c
+        self.model.coordinates.append(self.uncertainty)
         self._create_aux()
         states = [None] * self.states_qty
 
@@ -508,9 +508,9 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
 
     def _actor_with_object_what(self):
         e = self.model.entities[0]
-        c = self.model.coordenates[0]
+        c = self.model.coordinates[0]
         self.topic.entity = e
-        self.topic.coordenate = c
+        self.topic.coordinate = c
         self._create_aux()
         states = [None] * self.states_qty
 
@@ -539,10 +539,10 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
 
     def _actor_with_object_who(self):
         e = self.model.entities[0]
-        c = self.model.coordenates[0]
-        self.model.coordenates.append(self.uncertainty)
+        c = self.model.coordinates[0]
+        self.model.coordinates.append(self.uncertainty)
         self.topic.entity = e
-        self.topic.coordenate = c
+        self.topic.coordinate = c
         self._create_aux()
         states = [None] * self.states_qty
 
@@ -596,7 +596,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             contextualized_options["none"] = [aux]
         elif isinstance(self.topic, ActorInLocationWhere):
             options.remove("designated_location")
-            aux = [c.name for c in self.model.coordenates]
+            aux = [c.name for c in self.model.coordinates]
             options.extend(aux)
             contextualized_options["designated_location"] = aux
 
@@ -619,7 +619,7 @@ class SimpleTracker(SimpleTrackerBaseGenerator):
             contextualized_options["unknown"] = [UNKNONW_ANSWERS[0]]
         elif isinstance(self.topic, ActorWithObjectWho):
             options.remove("designated_actor")
-            aux = [c.name for c in self.model.coordenates]
+            aux = [c.name for c in self.model.coordinates]
             options.extend(aux)
             contextualized_options["designated_actor"] = aux
 

@@ -62,7 +62,7 @@ class Entity(BaseModel):
         return hash(self.name)
 
 
-class Coordenate(BaseModel):
+class Coordinate(BaseModel):
     name: str
 
     def __hash__(self):
@@ -79,7 +79,20 @@ class Relationship(BaseModel):
         return hash(self.name)
 
 
-class EntityInCoordenateState(State):
+class TemporalTrackingEvent(BaseModel):
+    entity: Entity
+    coordinate: Coordinate
+    index: int
+
+    def __hash__(self):
+        return hash((self.entity, self.coordinate))
+
+
+class TemporalTrackingGraph(ImmediateGraph):
+    events: list[TemporalTrackingEvent]
+
+
+class EntityInCoordinateState(State):
     am: SparseArray
 
     def create_transition(
@@ -92,7 +105,7 @@ class EntityInCoordenateState(State):
         Args:
             num_transitions (int): The number of transitions (actor-location pairs) to
             create.
-            coordenate (list[str]): A list of possible coordenate.
+            coordinate (list[str]): A list of possible coordinate.
             condition (Callable): A callable that takes a pair (actor, location)
             and returns a boolean.
         Returns:
@@ -105,7 +118,7 @@ class EntityInCoordenateState(State):
             e = random.sample(list(next_am.data.keys()), k=num_transitions)
             for i_e in e:
                 x, y = i_e[0], i_e[1]
-                # get a different coordenate different from current
+                # get a different coordinate different from current
                 set_x = set([t for t in range(next_am.shape[0])]) - set([x])
                 next_x = random.choice(list(set_x))
                 next_am[next_x, y] = 1
@@ -120,15 +133,15 @@ class EntityInCoordenateState(State):
 
             return next_am, f
 
-    def get_entity_coordenate(self, entity: Entity):
+    def get_entity_coordinate(self, entity: Entity):
         for unit in self.am:
             if unit.entity == entity:
-                return unit.coordenate
+                return unit.coordinate
         return None
 
-    def get_entities_in_coodenate(self, coordenate: int):
+    def get_entities_in_coodenate(self, coordinate: int):
         entities = []
-        entities = self.am[coordenate, :] == 1
+        entities = self.am[coordinate, :] == 1
         entities = [int(key[0]) for key in entities.data]
         return entities
 
