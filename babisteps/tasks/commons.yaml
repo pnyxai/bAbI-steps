@@ -15,8 +15,30 @@ locations:
   - "office"
   - "garden"
   - "park"
-  - "store"
+  - "supermarket"
   - "street"
+  - "rooftop"
+  - "basement"
+  - "balcony"
+  - "driveway"
+  # Below are some other locations, which might later need some
+  # sor of division, because they are larger places than the ones avobe
+  - "avenue"
+  - "plaza"
+  - "stadium"
+  - "theater"
+  - "mall"
+  - "school"
+  - "university"
+  - "train station"
+  - "airport"
+  - "bus stop"
+  - "cafe"
+  - "restaurant"
+  - "museum"
+  - "hospital"
+  - "library"
+  - "parking lot"
 actors:
   - "ana"
   - "bob"
@@ -28,6 +50,28 @@ actors:
   - "henry"
   - "ivy"
   - "jack"
+  - "diana"
+  - "elena"
+  - "felix"
+  - "gabriela"
+  - "hugo"
+  - "irene"
+  - "julian"
+  - "laura"
+  - "marco"
+  - "nora"
+  - "oscar"
+  - "paul"
+  - "quinn"
+  - "rachel"
+  - "sam"
+  - "tanya"
+  - "uma"
+  - "victor"
+  - "walter"
+  - "xavier"
+  - "yolanda"
+  - "zach"
 objects:
   - "pencil"
   - "book"
@@ -39,74 +83,120 @@ objects:
   - "notebook"
   - "cup"
   - "spoon"
+  - "orange"
+  - "mug"
+  - "fork"
+  - "knife"
+  - "plate"
+  - "bottle"
+  - "glass"
+  - "backpack"
+  - "suitcase"
+  - "skateboard"
+  - "headphones"
+  - "watch"
+  - "camera"
+  - "laptop"
+  - "monitor"
+  - "keyboard"
+  - "mouse"
+  - "charger"
+  - "remote"
+  - "umbrella"
+  - "plant"
+  - "vase"
+  - "clock"
+  - "toolbox"
+  - "hammer"
+  - "screwdriver"
+  - "drill"
+  - "carton"
+  # This stuff is too big, might be problematic to add
+  # - "lamp"
+  # - "chair"
+  # - "table"
+  # - "sofa"
+  # - "bed"
+  # - "television"
+  # - "bookshelf"
+  # - "heater"
+  # - "fan"
+  # - "bicycle"
+  # - "scooter"
+  # - "motorcycle"
+  # - "car"
 events:
-  - "party"
+  - "birthday party"
   - "wedding"
   - "funeral"
-  - "birthday"
   - "concert"
   - "festival"
   - "conference"
   - "meeting"
+  - "workshop"
+  - "lecture"
   - "ceremony"
+  - "parade"
+  - "exhibition"
+  - "trade show"
+  - "match"
+  - "rehearsal"
+  - "audition"
+  - "interview"
+  - "appointment"
+  - "class"
+  - "graduation"
+  - "fundraiser"
+  - "hackathon"
+  - "seminar"
+  - "screening"
 relations:
-  big:
+  larger:
     base:
-    - bigger than
-    - larger than
-    - greater than
+      - larger than
+      - bigger than
     opposite:
-    - smaller than
-    - tinier than
+      - smaller than
     type: relative_size
-  right:
+  right_of:
     base:
-    - right of
-    - to the right of
+      - right of
+      - to the right of
     opposite:
-    - left of
-    - to the left of
+      - left of
+      - to the left of
     type: relative_position
-  ahead:
+  in_front_of:
     base:
-    - in front of
-    - ahead of
+      - in front of
+      - ahead of
     opposite:
-    - behind
+      - behind
+      - in back of
     type: relative_position
-  # above:
-  #   base:
-  #   - above
-  #   - over
-  #   opposite:
-  #   - below
-  #   - under
-  #   type: relative_position
-  south:
+  south_of:
     base:
-    - south of
-    - to the south of
+      - south of
+      - to the south of
     opposite:
-    - north of
-    - to the north of
+      - north of
+      - to the north of
     type: absolute_position
-  east:
+  east_of:
     base:
-    - east of
-    - to the east of
+      - east of
+      - to the east of
     opposite:
-    - west of
-    - to the west of
+      - west of
+      - to the west of
     type: absolute_position
-  before:
+  earlier_than:
     base:
-    - before
-    - earlier than
-    - previous to
-    - prior to
+      - earlier than
+      - before
     opposite:
-    - after
-    - later than
+      - later than
+      - after
     type: relative_event
 relation_types_compatibility:
   relative_event:
