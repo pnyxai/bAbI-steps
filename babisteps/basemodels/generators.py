@@ -638,7 +638,7 @@ class OrderBaseGenerator(BaseGenerator):
         # 0 < edge_qty < ((n^2)-n)/2
         n = len(values["model"].entities)
         if values["edge_qty"] < 0 or values["edge_qty"] > ((n**2) - n) / 2:
-            raise ValueError("edge_qty must be between 0 and ((n^2)-n)/2")
+            raise ValueError("edge_qty must be between 0 and ((n^2)-n)/2, where n is the number of entities.")
         return values
 
     @abstractmethod

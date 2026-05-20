@@ -1,214 +1,197 @@
-task_path: "babisteps/tasks/commons.yaml"
-max_retries: 50
+task_path: babisteps/tasks/commons.yaml
+verbosity: INFO
 max_generator_rebuildings: 3
+max_retries: 50
 num_samples_by_task: 1000
-verbosity: "INFO"
-# SimpleTracking and ComplexTracking
-states_qty: 16
-edges_qty: 10
-locations:
-  - "bathroom"
-  - "kitchen"
-  - "living room"
-  - "bedroom"
-  - "garage"
-  - "office"
-  - "garden"
-  - "park"
-  - "supermarket"
-  - "street"
-  - "rooftop"
-  - "basement"
-  - "balcony"
-  - "driveway"
-  # Below are some other locations, which might later need some
-  # sor of division, because they are larger places than the ones avobe
-  - "avenue"
-  - "plaza"
-  - "stadium"
-  - "theater"
-  - "mall"
-  - "school"
-  - "university"
-  - "train station"
-  - "airport"
-  - "bus stop"
-  - "cafe"
-  - "restaurant"
-  - "museum"
-  - "hospital"
-  - "library"
-  - "parking lot"
+states_qty: 32
+edges_qty: 32
 actors:
-  - "ana"
-  - "bob"
-  - "charlie"
-  - "david"
-  - "eve"
-  - "frank"
-  - "grace"
-  - "henry"
-  - "ivy"
-  - "jack"
-  - "diana"
-  - "elena"
-  - "felix"
-  - "gabriela"
-  - "hugo"
-  - "irene"
-  - "julian"
-  - "laura"
-  - "marco"
-  - "nora"
-  - "oscar"
-  - "paul"
-  - "quinn"
-  - "rachel"
-  - "sam"
-  - "tanya"
-  - "uma"
-  - "victor"
-  - "walter"
-  - "xavier"
-  - "yolanda"
-  - "zach"
-objects:
-  - "pencil"
-  - "book"
-  - "lighter"
-  - "apple"
-  - "key"
-  - "phone"
-  - "wallet"
-  - "notebook"
-  - "cup"
-  - "spoon"
-  - "orange"
-  - "mug"
-  - "fork"
-  - "knife"
-  - "plate"
-  - "bottle"
-  - "glass"
-  - "backpack"
-  - "suitcase"
-  - "skateboard"
-  - "headphones"
-  - "watch"
-  - "camera"
-  - "laptop"
-  - "monitor"
-  - "keyboard"
-  - "mouse"
-  - "charger"
-  - "remote"
-  - "umbrella"
-  - "plant"
-  - "vase"
-  - "clock"
-  - "toolbox"
-  - "hammer"
-  - "screwdriver"
-  - "drill"
-  - "carton"
-  # This stuff is too big, might be problematic to add
-  # - "lamp"
-  # - "chair"
-  # - "table"
-  # - "sofa"
-  # - "bed"
-  # - "television"
-  # - "bookshelf"
-  # - "heater"
-  # - "fan"
-  # - "bicycle"
-  # - "scooter"
-  # - "motorcycle"
-  # - "car"
+- ana
+- bob
+- charlie
+- david
+- eve
+- frank
+- grace
+- henry
+- ivy
+- jack
+- diana
+- elena
+- felix
+- gabriela
+- hugo
+- irene
+- julian
+- laura
+- marco
+- nora
+- oscar
+- paul
+- quinn
+- rachel
+- sam
+- tanya
+- uma
+- victor
+- walter
+- xavier
+- yolanda
+- zach
 events:
-  - "birthday party"
-  - "wedding"
-  - "funeral"
-  - "concert"
-  - "festival"
-  - "conference"
-  - "meeting"
-  - "workshop"
-  - "lecture"
-  - "ceremony"
-  - "parade"
-  - "exhibition"
-  - "trade show"
-  - "match"
-  - "rehearsal"
-  - "audition"
-  - "interview"
-  - "appointment"
-  - "class"
-  - "graduation"
-  - "fundraiser"
-  - "hackathon"
-  - "seminar"
-  - "screening"
+- birthday party
+- wedding
+- funeral
+- concert
+- festival
+- conference
+- meeting
+- workshop
+- lecture
+- ceremony
+- parade
+- exhibition
+- trade show
+- match
+- rehearsal
+- audition
+- interview
+- appointment
+- class
+- graduation
+- fundraiser
+- hackathon
+- seminar
+- screening
+locations:
+- bathroom
+- kitchen
+- living room
+- bedroom
+- garage
+- office
+- garden
+- park
+- supermarket
+- street
+- rooftop
+- basement
+- balcony
+- driveway
+- avenue
+- plaza
+- stadium
+- theater
+- mall
+- school
+- university
+- train station
+- airport
+- bus stop
+- cafe
+- restaurant
+- museum
+- hospital
+- library
+- parking lot
+objects:
+- pencil
+- book
+- lighter
+- apple
+- key
+- phone
+- wallet
+- notebook
+- cup
+- spoon
+- orange
+- mug
+- fork
+- knife
+- plate
+- bottle
+- glass
+- backpack
+- suitcase
+- skateboard
+- headphones
+- watch
+- camera
+- laptop
+- monitor
+- keyboard
+- mouse
+- charger
+- remote
+- umbrella
+- plant
+- vase
+- clock
+- toolbox
+- hammer
+- screwdriver
+- drill
+- carton
+relation_types_compatibility:
+  absolute_position:
+  - absolute_position
+  - relative_size
+  relative_event:
+  - relative_event
+  - absolute_position
+  relative_position:
+  - relative_position
+  - relative_size
+  relative_size:
+  - relative_size
+  - relative_position
+  - absolute_position
 relations:
+  earlier_than:
+    base:
+    - earlier than
+    - before
+    opposite:
+    - later than
+    - after
+    type: relative_event
+  east_of:
+    base:
+    - east of
+    - to the east of
+    opposite:
+    - west of
+    - to the west of
+    type: absolute_position
+  in_front_of:
+    base:
+    - in front of
+    - ahead of
+    opposite:
+    - behind
+    - in back of
+    type: relative_position
   larger:
     base:
-      - larger than
-      - bigger than
+    - larger than
+    - bigger than
     opposite:
-      - smaller than
+    - smaller than
     type: relative_size
   right_of:
     base:
-      - right of
-      - to the right of
+    - right of
+    - to the right of
     opposite:
-      - left of
-      - to the left of
-    type: relative_position
-  in_front_of:
-    base:
-      - in front of
-      - ahead of
-    opposite:
-      - behind
-      - in back of
+    - left of
+    - to the left of
     type: relative_position
   south_of:
     base:
-      - south of
-      - to the south of
+    - south of
+    - to the south of
     opposite:
-      - north of
-      - to the north of
+    - north of
+    - to the north of
     type: absolute_position
-  east_of:
-    base:
-      - east of
-      - to the east of
-    opposite:
-      - west of
-      - to the west of
-    type: absolute_position
-  earlier_than:
-    base:
-      - earlier than
-      - before
-    opposite:
-      - later than
-      - after
-    type: relative_event
-relation_types_compatibility:
-  relative_event:
-    - relative_event
-    - absolute_position
-  relative_size:
-    - relative_size
-    - relative_position
-    - absolute_position
-  absolute_position:
-    - absolute_position
-    - relative_size
-  relative_position:
-    - relative_position
-    - relative_size

@@ -1,5 +1,6 @@
 task_name: sizeorder
-relations_qty: 3
-entities: 7
-gen_kwargs:
 func: utils._get_generators
+gen_kwargs: null
+relations_qty: 3
+entities: 12
+

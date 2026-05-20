@@ -2,3 +2,6 @@ __pycache__
 .ruff_cache
 outputs
 *logs.txt
+.DS_Store
+untracked
+.venv

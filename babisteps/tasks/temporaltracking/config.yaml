@@ -1,8 +1,8 @@
 task_name: temporaltracking
-entities: 6
-coordinates: 8
-edge_qty: 20
-events_qty: 8
-relations_qty: 1
-gen_kwargs:
 func: utils._get_generators
+gen_kwargs: null
+relations_qty: 1
+entities: 16
+edge_qty: 32
+events_qty: 8
+coordinates: 12
