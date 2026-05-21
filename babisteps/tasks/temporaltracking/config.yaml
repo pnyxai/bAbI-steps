@@ -3,6 +3,6 @@ func: utils._get_generators
 gen_kwargs: null
 relations_qty: 1
 entities: 16
-edge_qty: 32
+edge_qty: 24
 events_qty: 8
 coordinates: 12

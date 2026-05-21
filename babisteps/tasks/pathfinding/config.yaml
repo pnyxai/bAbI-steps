@@ -1,7 +1,7 @@
 task_name: pathfinding
 func: utils._get_generators
 gen_kwargs: null
-relations_qty: 5
+relations_qty: 2
 entities: 20
 max_path_length: 5
 
